@@ -1,0 +1,7 @@
+[theme]
+base = "dark"
+primaryColor = "#7C3AED"         # violet-600
+backgroundColor = "#0B0F19"      # near-black
+secondaryBackgroundColor = "#111826"
+textColor = "#E5E7EB"            # gray-200
+font = "sans serif"
