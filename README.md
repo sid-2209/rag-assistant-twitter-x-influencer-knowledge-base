@@ -26,12 +26,14 @@ An AI-powered Retrieval-Augmented Generation (RAG) system that helps users disco
 
 ## ✅ Features
 - 🔍 Data Ingestion Pipeline: collect and process influencer data (profiles, niches, posts)
-- 🧠 Vector Search: embeddings with OpenAI (if available) and FAISS or NumPy fallback
-- 🤖 RAG Engine: combines vector retrieval with LLM generation; deterministic offline fallback
+- 🧠 Vector Search: embeddings with OpenAI (if available) and FAISS/NumPy, optional Chroma backend
+- 🤖 RAG Engine: Vanilla pipeline + LangChain-style mode (toggle at query-time)
+- 🧰 Model selection: pass model name at runtime; BYO API key supported
 - 📜 Citations: responses reference influencer names and handles
-- 🌐 API: FastAPI-powered REST endpoints
+- 🌐 API: FastAPI endpoints for health, ingest, upload, query, feedback
 - 🧪 Testing: Pytest coverage for RAG, vector search, API, persistence, and fallbacks
-- 📦 Infra: Docker + docker-compose for easy deployment and persistence
+- 🖥 Frontend: Streamlit UI (upload, toggle vanilla/langchain, model select, history, export)
+- 📦 Infra: Docker + docker-compose + GitHub Actions CI (build/push image)
 
 ---
 
@@ -40,12 +42,13 @@ An AI-powered Retrieval-Augmented Generation (RAG) system that helps users disco
 twitter-influencer-assistant/
   app/
     __init__.py
-    api.py          # FastAPI app: /healthz, /ingest, /query, /feedback; mounts /mock routes
+    api.py          # FastAPI app: /healthz, /ingest, /upload_dataset, /query, /feedback; mounts /mock routes
     routes.py       # Mock/demo routes (mounted under /mock)
     config.py       # Centralized configs (paths, tunables, dotenv)
     embeddings.py   # Embedding + VectorStore (FAISS/NumPy, save/load persistence)
     pipeline.py     # ETL CLI: raw -> processed with normalization, dedupe, chunking
     rag.py          # RAG orchestration with OpenAI + offline fallback
+    rag_langchain.py# LangChain-style RAG (lightweight placeholder)
   data/
     raw/            # raw influencer data (JSON/CSV)
     processed/      # cleaned dataset produced by ETL
@@ -54,6 +57,10 @@ twitter-influencer-assistant/
     docker-compose.yml
     requirements.txt
   models/           # persisted vector store (created after first /ingest)
+  frontend/
+    components/ui.py
+    streamlit_app.py
+    theme.css
   tests/
     conftest.py
     test_api.py
@@ -119,7 +126,8 @@ MAX_CHUNK_LEN=280
 | Method | Path         | Description                                      |
 |--------|--------------|--------------------------------------------------|
 | GET    | /healthz     | Health check                                     |
-| POST   | /ingest      | Ingest dataset JSON (path in request body)       |
+| POST   | /ingest      | Ingest dataset by path (runs ETL for directories)|
+| POST   | /upload_dataset | Multipart upload (saves to data/raw and runs ETL)|
 | POST   | /query       | Ask a question; returns answer + citations       |
 | POST   | /feedback    | Submit feedback on a query result                |
 | POST   | /mock/query  | Demo endpoint using static mock docs (no vector) |
@@ -155,6 +163,19 @@ What ETL does:
 ### Vector store persistence
 - After the first `/ingest`, the vector store is saved under `models/vector_store/` (metadata + FAISS/NumPy data)
 - On app startup, it attempts to load the persisted store automatically so `/query` works without re-ingesting
+ - Optional: set `VECTOR_BACKEND=chroma` to use a Chroma persistent store in `models/chroma_store/`
+
+## 🖥 Streamlit UI
+
+Run the UI:
+```bash
+streamlit run frontend/streamlit_app.py
+```
+
+Features:
+- Sidebar: backend URL, API key, implementation toggle (vanilla/langchain), model, top-k, temperature
+- Tabs: Upload (multipart → `/upload_dataset`), Ask (calls `/query`), History (re-run + export), About
+- Theming: `.streamlit/config.toml` + `frontend/theme.css` (Inter font)
 
 ---
 
@@ -187,6 +208,14 @@ docker-compose -f infra/docker-compose.yml up --build
 Notes:
 - The compose file mounts `./models` -> `/app/models` to persist the vector store across container restarts
 - A healthcheck probes `GET /healthz`
+
+---
+
+## 🚚 CI/CD & Deployment
+
+- GitHub Actions CI in `.github/workflows/ci.yml` runs tests and builds/pushes a Docker image to GHCR on `main`.
+- Render deploy: see `infra/render.yaml`.
+- Cloud Run: see `infra/cloudrun.md` for manual steps.
 
 ---
 

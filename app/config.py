@@ -35,6 +35,14 @@ DEFAULT_MAX_CHUNK_LEN: Final[int] = int(os.getenv("MAX_CHUNK_LEN", "280"))
 # FAISS toggle: "auto" (default), "true"/"1" to enable if available, "false"/"0" to force disable
 FAISS_MODE: Final[str] = os.getenv("USE_FAISS", "auto").strip().lower()
 
+# Reranker toggle (simple keyword overlap reranker)
+RERANKER_ENABLED: Final[bool] = os.getenv("RERANKER_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+
+# Vector backend: 'native' (default) or 'chroma'
+VECTOR_BACKEND: Final[str] = os.getenv("VECTOR_BACKEND", "native").strip().lower()
+CHROMA_DIR: Final[Path] = MODELS_DIR / "chroma_store"
+CHROMA_COLLECTION: Final[str] = os.getenv("CHROMA_COLLECTION", "influencers")
+
 # Create directories if they don't exist (safe for first run)
 for directory in (DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, MODELS_DIR):
     directory.mkdir(parents=True, exist_ok=True)

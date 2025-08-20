@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import List, Literal, Any, Dict
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from app import routes
 from pydantic import BaseModel, Field
 
 from .embeddings import VectorStore
 from .rag import generate_answer
+from .rag_langchain import generate_answer_langchain
 import json
 from pathlib import Path
 
@@ -15,7 +16,13 @@ from pathlib import Path
 db_stub: List[Dict[str, Any]] = []
 
 # Attempt to load persisted vector store; fallback to empty store
-from .config import MODELS_DIR, VECTOR_TOP_K, VECTOR_PERSIST_DIR  # late import to avoid cycles
+from .config import (
+    MODELS_DIR,
+    VECTOR_TOP_K,
+    VECTOR_PERSIST_DIR,
+    DEFAULT_MAX_CHUNK_LEN,
+    RERANKER_ENABLED,
+)
 
 persist_dir = VECTOR_PERSIST_DIR
 _loaded = VectorStore.load(persist_dir)
@@ -33,6 +40,9 @@ class IngestResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str = Field(..., description="User query text")
+    implementation: Literal["vanilla", "langchain"] | None = Field("vanilla")
+    model: str | None = Field(None, description="Model name, e.g., gpt-4o-mini")
+    api_key: str | None = Field(None, description="Optional API key to use at runtime")
 
 
 class QueryResponse(BaseModel):
@@ -64,11 +74,25 @@ async def ingest(request: IngestRequest) -> IngestResponse:
     # Allow relative paths from project root
     if not dataset_path.is_absolute():
         dataset_path = Path(__file__).resolve().parent.parent / dataset_path
-    try:
-        with dataset_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read dataset: {e}")
+
+    # Prefer processed dataset via ETL if input is a directory
+    data: Any
+    if dataset_path.is_dir():
+        from .pipeline import run_pipeline  # lazy import
+
+        processed_path = Path(__file__).resolve().parent.parent / "data/processed/processed.json"
+        try:
+            run_pipeline(dataset_path, processed_path, DEFAULT_MAX_CHUNK_LEN)
+            with processed_path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"ETL failed: {e}")
+    else:
+        try:
+            with dataset_path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to read dataset: {e}")
     # Expecting a list of dicts
     if isinstance(data, list):
         db_stub = [dict(record) for record in data]
@@ -101,6 +125,18 @@ async def ingest(request: IngestRequest) -> IngestResponse:
     db_stub = []
     vector_store = VectorStore()
     return IngestResponse(status="ingested", count=0)
+@app.post("/upload_dataset", response_model=IngestResponse)
+async def upload_dataset(
+    file: UploadFile = File(...),
+):
+    """Upload a dataset file; save to data/raw and run ETL via ingest flow."""
+    raw_dir = Path(__file__).resolve().parent.parent / "data/raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    target_path = raw_dir / file.filename
+    content = await file.read()
+    target_path.write_bytes(content)
+    # Reuse ingest with directory path to trigger ETL
+    return await ingest(IngestRequest(dataset_path=str(raw_dir)))
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -112,6 +148,14 @@ async def query(request: QueryRequest) -> QueryResponse:
         r for r in vector_store.search(request.query, top_k=VECTOR_TOP_K)
         if float(r.get("score", 0.0)) > 0.0
     ]
+
+    # Optional lightweight reranker by keyword overlap
+    if RERANKER_ENABLED and results:
+        q_tokens = {t for t in request.query.lower().split() if t.isalnum()}
+        def overlap(meta: Dict[str, Any]) -> int:
+            text = f"{meta.get('niche','')} {meta.get('sample_post','')} {meta.get('name','')} {meta.get('handle','')}".lower()
+            return sum(1 for t in q_tokens if t in text)
+        results.sort(key=overlap, reverse=True)
     if not results:
         # Fallback: simple keyword match on ingested records
         q = request.query.lower()
@@ -136,7 +180,12 @@ async def query(request: QueryRequest) -> QueryResponse:
         ]
         return QueryResponse(answer=rag_result.get("answer", ""), citations=citations)
 
-    rag_result = generate_answer(request.query, results)
+    # Allow runtime model/key for future extensions
+    implementation = (request.implementation or "vanilla").lower()
+    if implementation == "langchain":
+        rag_result = generate_answer_langchain(request.query, results, request.model or "gpt-4o-mini", request.api_key)
+    else:
+        rag_result = generate_answer(request.query, results)
     citations = [
         {k: c.get(k) for k in ("name", "handle", "niche", "followers")}
         for c in rag_result.get("citations", [])

@@ -6,7 +6,7 @@ import math
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from .config import FAISS_MODE
+from .config import FAISS_MODE, VECTOR_BACKEND, CHROMA_DIR, CHROMA_COLLECTION
 
 try:  # Optional FAISS import
     import faiss  # type: ignore
@@ -236,3 +236,50 @@ class VectorStore:
             return vs
 
         return None
+
+
+class ChromaVectorStore:
+    """Optional Chroma-backed vector store wrapper."""
+
+    def __init__(self) -> None:
+        try:
+            import chromadb  # type: ignore
+        except Exception:
+            raise RuntimeError("Chroma is not installed. Set VECTOR_BACKEND=native or install chromadb.")
+        self._client = chromadb.PersistentClient(path=str(CHROMA_DIR))  # type: ignore[attr-defined]
+        self._collection = self._client.get_or_create_collection(name=CHROMA_COLLECTION)  # type: ignore[attr-defined]
+
+    def add_documents(self, docs: List[Dict[str, Any]]) -> None:
+        if not docs:
+            return
+        texts = [str(d.get("text", "")) for d in docs]
+        metadatas = [d.get("metadata", {}) for d in docs]
+        ids = [str(m.get("id", i)) for i, m in enumerate(metadatas)]
+        self._collection.add(documents=texts, metadatas=metadatas, ids=ids)  # type: ignore[attr-defined]
+
+    def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+        res = self._collection.query(query_texts=[query], n_results=top_k)  # type: ignore[attr-defined]
+        results: List[Dict[str, Any]] = []
+        for idx in range(len(res.get("ids", [[]])[0])):
+            meta = res.get("metadatas", [[{}]])[0][idx] or {}
+            distance = res.get("distances", [[0]])[0][idx] if res.get("distances") else 0.0
+            score = float(1.0 - distance) if isinstance(distance, (int, float)) else 0.0
+            results.append({"score": score, **meta})
+        return results
+
+    def save(self, target_dir: str | Path) -> None:
+        _ = (target_dir)  # Chroma persists automatically
+
+    @classmethod
+    def load(cls, source_dir: str | Path) -> Optional["ChromaVectorStore"]:
+        # Persistence handled by PersistentClient; simply construct a new instance
+        try:
+            return cls()
+        except Exception:
+            return None
+
+
+def create_vector_store() -> Any:
+    if VECTOR_BACKEND == "chroma":
+        return ChromaVectorStore()
+    return VectorStore()
