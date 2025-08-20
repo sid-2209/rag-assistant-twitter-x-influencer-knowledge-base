@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: rag-assistant
+    env: docker
+    plan: free
+    dockerCommand: uvicorn app.api:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OPENAI_API_KEY
+        sync: false

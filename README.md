@@ -20,6 +20,7 @@ An AI-powered Retrieval-Augmented Generation (RAG) system that helps users disco
 - [Docker & Compose](#-docker--compose)
 - [Testing](#-testing)
 - [Tech Notes](#-tech-notes)
+ - [CI/CD & Deployment](#-cicd--deployment)
 
 ---
 
@@ -186,6 +187,14 @@ docker-compose -f infra/docker-compose.yml up --build
 Notes:
 - The compose file mounts `./models` -> `/app/models` to persist the vector store across container restarts
 - A healthcheck probes `GET /healthz`
+
+---
+
+## 🚚 CI/CD & Deployment
+
+- GitHub Actions CI is configured in `.github/workflows/ci.yml` to run tests and build/push an image to GHCR on pushes to `main`.
+- Render: see `infra/render.yaml` for a minimal Docker-based deploy.
+- Cloud Run: see `infra/cloudrun.md` for manual commands.
 
 ---
 
