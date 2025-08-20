@@ -67,14 +67,14 @@ twitter-influencer-assistant/
 
 ## 🧭 Architecture (High-Level)
 ```mermaid
-graph TD
-  A[Raw data (data/raw)] --> B[ETL (app/pipeline.py)]
-  B --> C[Processed JSON (data/processed/processed.json)]
-  C --> D[VectorStore (FAISS or NumPy)]
-  D --> E[Persisted (models/vector_store/)]
-  F[FastAPI app.api] --> D
-  F --> G[Endpoints: healthz, ingest, query, feedback]
-  F --> H[Mock endpoint: /mock/query]
+graph TD;
+  A[Raw data] --> B[ETL pipeline];
+  B --> C[Processed JSON];
+  C --> D[VectorStore];
+  D --> E[Persisted store];
+  F[FastAPI API] --> D;
+  F --> G[Endpoints];
+  F --> H[Mock endpoint];
 ```
 
 ---
