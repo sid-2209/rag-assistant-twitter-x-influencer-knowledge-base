@@ -1,0 +1,53 @@
+# Setup
+python -m venv .venv
+source .venv/bin/activate
+pip install -r infra/requirements.txt
+
+# Run API (dev)
+./.venv/bin/uvicorn app.api:app --reload
+
+# Run API (prod-like)
+./.venv/bin/uvicorn app.api:app --host 0.0.0.0 --port 8000
+
+# Health check
+curl http://127.0.0.1:8000/healthz
+
+# Ingest sample dataset
+curl -X POST http://127.0.0.1:8000/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"dataset_path":"data/raw/sample.json"}'
+
+# Query
+curl -X POST http://127.0.0.1:8000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"AI startups"}'
+
+# Feedback
+curl -X POST http://127.0.0.1:8000/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{"query_id":"123","rating":"up"}'
+
+# Run tests
+./.venv/bin/pytest -q
+
+# ETL (raw -> processed)
+./.venv/bin/python app/pipeline.py \
+  --input-dir data/raw \
+  --output-file data/processed/processed.json \
+  --max-chunk-len 280
+
+# Docker (build & run)
+docker build -t twitter-assistant .
+docker run -p 8000:8000 twitter-assistant
+
+# Docker Compose (from repo root)
+docker-compose -f infra/docker-compose.yml up --build
+docker-compose -f infra/docker-compose.yml restart
+docker-compose -f infra/docker-compose.yml down
+docker-compose -f infra/docker-compose.yml up -d --build
+
+# Persisted vector store (should exist after first /ingest)
+ls -la models/vector_store/
+
+# Optional: set environment variable (OpenAI)
+echo "OPENAI_API_KEY=your_openai_api_key_here" > .env

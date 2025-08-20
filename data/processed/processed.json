@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "name": "Aarav Mehta",
+    "handle": "@aarav_ai",
+    "followers": 210000,
+    "niche": "technology, startups, ai",
+    "sample_post": "AI startups are accelerating innovations in generative models and edge AI.",
+    "chunks": [
+      "AI startups are accelerating innovations in generative models and edge AI."
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Sanya Kapoor",
+    "handle": "@sanya_fit",
+    "followers": 98000,
+    "niche": "fitness, wellness",
+    "sample_post": "Daily workout routine and recovery tips for strength training.",
+    "chunks": [
+      "Daily workout routine and recovery tips for strength training."
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Kabir Shah",
+    "handle": "@kabir_fintech",
+    "followers": 150000,
+    "niche": "finance, crypto",
+    "sample_post": "Crypto market sentiment improves as L2 scaling solutions gain traction.",
+    "chunks": [
+      "Crypto market sentiment improves as L2 scaling solutions gain traction."
+    ]
+  }
+]
