@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Twitter/X Influencer RAG</title>
+    <style>
+      body{font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; background:#0B0F19; color:#E5E7EB}
+      .container{max-width: 860px; margin: 0 auto}
+      .card{background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px}
+      input[type="file"], input[type="text"], button{padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#111826; color:#E5E7EB}
+      button{background:#7C3AED; border-color:#7C3AED; cursor:pointer}
+      .chip{display:inline-block; border:1px solid rgba(255,255,255,0.18); border-radius:999px; padding:6px 10px; margin:4px 6px 0 0; font-size:12px; opacity:0.9}
+      .row{display:flex; gap:10px}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🐦 Twitter/X Influencer RAG</h1>
+
+      <div class="card">
+        <form action="/ui/upload" method="post" enctype="multipart/form-data">
+          <label><b>Upload dataset (JSON/CSV)</b></label><br/>
+          <div class="row">
+            <input type="file" name="file" />
+            <button type="submit">Ingest</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <form action="/ui/query" method="post">
+          <label><b>Ask a question</b></label><br/>
+          <div class="row">
+            <input type="text" name="q" placeholder="Who talks about AI startups?" style="flex:1" value="{{ q or '' }}" />
+            <button type="submit">Query</button>
+          </div>
+        </form>
+      </div>
+
+      {% if answer %}
+      <div class="card">
+        <h3>Answer</h3>
+        <div>{{ answer }}</div>
+      </div>
+      <div>
+        <b>Citations</b><br/>
+        {% for c in citations %}
+          <span class="chip">{{ c.name }} {{ c.handle }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

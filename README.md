@@ -32,7 +32,7 @@ An AI-powered Retrieval-Augmented Generation (RAG) system that helps users disco
 - 📜 Citations: responses reference influencer names and handles
 - 🌐 API: FastAPI endpoints for health, ingest, upload, query, feedback
 - 🧪 Testing: Pytest coverage for RAG, vector search, API, persistence, and fallbacks
-- 🖥 Frontend: Streamlit UI (upload, toggle vanilla/langchain, model select, history, export)
+- 🖥 Frontend: Optional (you can integrate your own). The backend APIs are stable.
 - 📦 Infra: Docker + docker-compose + GitHub Actions CI (build/push image)
 
 ---
@@ -57,10 +57,6 @@ twitter-influencer-assistant/
     docker-compose.yml
     requirements.txt
   models/           # persisted vector store (created after first /ingest)
-  frontend/
-    components/ui.py
-    streamlit_app.py
-    theme.css
   tests/
     conftest.py
     test_api.py

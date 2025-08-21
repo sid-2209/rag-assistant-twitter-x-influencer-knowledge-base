@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from .embeddings import VectorStore
 from .rag import generate_answer
 from .rag_langchain import generate_answer_langchain
+import os
 import json
 from pathlib import Path
 
@@ -60,6 +61,10 @@ class FeedbackResponse(BaseModel):
 
 
 app = FastAPI(title="Twitter Influencer Assistant")
+# Minimal HTML UI (optional)
+if os.getenv("ENABLE_WEB_UI", "false").lower() in ("1", "true", "yes", "on"):
+    from .webui import router as ui_router  # delayed import to avoid cycles
+    app.include_router(ui_router)
 
 
 @app.get("/healthz")
