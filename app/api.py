@@ -10,6 +10,7 @@ from .embeddings import VectorStore
 from .rag import generate_answer
 from .rag_langchain import generate_answer_langchain
 import os
+from fastapi.staticfiles import StaticFiles
 import json
 from pathlib import Path
 
@@ -62,6 +63,18 @@ class FeedbackResponse(BaseModel):
 
 
 app = FastAPI(title="Twitter Influencer Assistant")
+# Serve static assets (e.g., lottie background)
+static_dir = str(Path(__file__).resolve().parent / "static")
+print(f"Mounting static files from: {static_dir}")
+print(f"Static directory exists: {Path(static_dir).exists()}")
+if Path(static_dir).exists():
+    print(f"Static directory contents: {list(Path(static_dir).rglob('*'))}")
+
+app.mount(
+    "/static",
+    StaticFiles(directory=static_dir),
+    name="static",
+)
 # Minimal HTML UI (optional)
 if os.getenv("ENABLE_WEB_UI", "false").lower() in ("1", "true", "yes", "on"):
     from .webui import router as ui_router  # delayed import to avoid cycles
@@ -212,3 +225,16 @@ async def feedback(request: FeedbackRequest) -> FeedbackResponse:
 
 # include endpoints from routes.py under a distinct prefix to avoid overriding /query
 app.include_router(routes.router, prefix="/mock")
+
+
+@app.get("/debug/static")
+async def debug_static() -> Dict[str, Any]:
+    """Debug endpoint to check static file configuration"""
+    static_dir = Path(__file__).resolve().parent / "static"
+    return {
+        "static_dir": str(static_dir),
+        "exists": static_dir.exists(),
+        "contents": list(static_dir.rglob("*")) if static_dir.exists() else [],
+        "lottie_exists": (static_dir / "lottie" / "bg.json").exists(),
+        "icon_exists": (static_dir / "icons" / "RAG icon.png").exists(),
+    }
