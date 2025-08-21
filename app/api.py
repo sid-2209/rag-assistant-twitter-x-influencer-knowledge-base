@@ -74,8 +74,6 @@ if os.getenv("ENABLE_WEB_UI", "false").lower() in ("1", "true", "yes", "on"):
 static_dir = str(Path(__file__).resolve().parent / "static")
 print(f"Static files directory: {static_dir}")
 print(f"Static directory exists: {Path(static_dir).exists()}")
-if Path(static_dir).exists():
-    print(f"Static directory contents: {list(Path(static_dir).rglob('*'))}")
 
 # Note: Static files are served via the /static/{path:path} endpoint below
 
@@ -225,30 +223,6 @@ async def feedback(request: FeedbackRequest) -> FeedbackResponse:
 # include endpoints from routes.py under a distinct prefix to avoid overriding /query
 app.include_router(routes.router, prefix="/mock")
 
-
-@app.get("/debug/static")
-async def debug_static() -> Dict[str, Any]:
-    """Debug endpoint to check static file configuration"""
-    static_dir = Path(__file__).resolve().parent / "static"
-    return {
-        "static_dir": str(static_dir),
-        "exists": static_dir.exists(),
-        "contents": list(static_dir.rglob("*")) if static_dir.exists() else [],
-        "lottie_exists": (static_dir / "lottie" / "bg.json").exists(),
-        "icon_exists": (static_dir / "icons" / "RAG icon.png").exists(),
-    }
-
-@app.get("/debug/files")
-async def debug_files() -> Dict[str, Any]:
-    """Debug endpoint to list all files in the app directory"""
-    app_dir = Path(__file__).resolve().parent
-    return {
-        "app_dir": str(app_dir),
-        "app_dir_exists": app_dir.exists(),
-        "all_files": [str(p.relative_to(app_dir)) for p in app_dir.rglob("*") if p.is_file()],
-        "static_dir_exists": (app_dir / "static").exists(),
-        "static_files": [str(p.relative_to(app_dir)) for p in (app_dir / "static").rglob("*") if p.is_file()] if (app_dir / "static").exists() else [],
-    }
 
 @app.get("/static/{path:path}")
 async def serve_static_fallback(path: str):
