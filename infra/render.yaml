@@ -7,5 +7,11 @@ services:
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: ENABLE_WEB_UI
+        value: "true"
       - key: OPENAI_API_KEY
         sync: false
+      - key: VECTOR_TOP_K
+        value: "3"
+      - key: USE_FAISS
+        value: "auto"
