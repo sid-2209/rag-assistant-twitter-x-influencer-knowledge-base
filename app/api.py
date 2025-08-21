@@ -44,6 +44,7 @@ class QueryRequest(BaseModel):
     implementation: Literal["vanilla", "langchain"] | None = Field("vanilla")
     model: str | None = Field(None, description="Model name, e.g., gpt-4o-mini")
     api_key: str | None = Field(None, description="Optional API key to use at runtime")
+    base_url: str | None = Field(None, description="Optional OpenAI-compatible base URL (e.g., Groq or Together)")
 
 
 class QueryResponse(BaseModel):
@@ -190,7 +191,13 @@ async def query(request: QueryRequest) -> QueryResponse:
     if implementation == "langchain":
         rag_result = generate_answer_langchain(request.query, results, request.model or "gpt-4o-mini", request.api_key)
     else:
-        rag_result = generate_answer(request.query, results)
+        rag_result = generate_answer(
+            request.query,
+            results,
+            model=request.model or None,
+            api_key=request.api_key or None,
+            base_url=request.base_url or None,
+        )
     citations = [
         {k: c.get(k) for k in ("name", "handle", "niche", "followers")}
         for c in rag_result.get("citations", [])

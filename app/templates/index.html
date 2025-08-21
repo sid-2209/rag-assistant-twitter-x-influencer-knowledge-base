@@ -3,20 +3,37 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Twitter/X Influencer RAG</title>
+    <title>RAG Assistant for Twitter/X</title>
     <style>
-      body{font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; background:#0B0F19; color:#E5E7EB}
+      body{
+        font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        margin: 24px; background:#0B0F19; color:#E5E7EB; line-height: 1.5;
+      }
       .container{max-width: 860px; margin: 0 auto}
-      .card{background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px}
-      input[type="file"], input[type="text"], button{padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#111826; color:#E5E7EB}
+      h1{margin: 0 0 10px 0}
+      .subtitle{opacity:.85; margin: 0 0 20px 2px; max-width: 780px}
+      .card{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 14px; padding: 16px 18px; margin-bottom: 24px;
+      }
+      input[type="file"], input[type="text"], button{
+        padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.18);
+        background:#111826; color:#E5E7EB
+      }
       button{background:#7C3AED; border-color:#7C3AED; cursor:pointer}
       .chip{display:inline-block; border:1px solid rgba(255,255,255,0.18); border-radius:999px; padding:6px 10px; margin:4px 6px 0 0; font-size:12px; opacity:0.9}
-      .row{display:flex; gap:10px}
+      .row{display:flex; gap:12px; margin-top: 8px}
+      .hr{height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent); margin: 16px 0}
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>🐦 Twitter/X Influencer RAG</h1>
+      <h1>RAG Assistant for Twitter/X</h1>
+      <p class="subtitle">
+        An AI-powered assistant that lets you query Twitter/X influencer data with Retrieval-Augmented Generation
+        for insights, comparisons, and trend discovery.
+      </p>
 
       <div class="card">
         <form action="/ui/upload" method="post" enctype="multipart/form-data">
@@ -25,6 +42,30 @@
             <input type="file" name="file" />
             <button type="submit">Ingest</button>
           </div>
+          {% if ingested %}
+            <div class="hr"></div>
+            <div style="opacity:.9; margin-bottom:6px;">Ingested <b>{{ ingested }}</b> records.</div>
+            {% if first_names %}
+              <div style="opacity:.8; font-size: 13px; margin-bottom:6px;">First {{ first_names.split(',')|length }} names: {{ first_names }}</div>
+            {% endif %}
+            {% if has_download %}
+              <a href="/ui/names.txt" download style="font-size:13px;">Download full names list</a>
+            {% endif %}
+            {% if stats and (stats.unique_handles or stats.top_hashtags) %}
+              <div class="hr"></div>
+              <div style="opacity:.9; margin-bottom:4px;"><b>Stats</b></div>
+              {% if stats.unique_handles %}
+                <div style="opacity:.8; font-size: 13px;">Unique handles: {{ stats.unique_handles }}</div>
+              {% endif %}
+              {% if stats.top_hashtags %}
+                <div style="opacity:.8; font-size: 13px; margin-top:4px;">Top hashtags:
+                  {% for tag,count in stats.top_hashtags %}
+                    <span class="chip">{{ tag }} ({{ count }})</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endif %}
+          {% endif %}
         </form>
       </div>
 
@@ -35,6 +76,29 @@
             <input type="text" name="q" placeholder="Who talks about AI startups?" style="flex:1" value="{{ q or '' }}" />
             <button type="submit">Query</button>
           </div>
+          <div class="row" style="margin-top:10px">
+            <div style="flex:1">
+              <label style="font-size:12px; opacity:.8;">Model</label><br/>
+              <select name="model" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#111826; color:#E5E7EB">
+                <option value="gpt-4o-mini" {% if model == 'gpt-4o-mini' %}selected{% endif %}>gpt-4o-mini</option>
+                <option value="gpt-4o" {% if model == 'gpt-4o' %}selected{% endif %}>gpt-4o</option>
+                <option value="gpt-4o-mini-2024-07-18" {% if model == 'gpt-4o-mini-2024-07-18' %}selected{% endif %}>gpt-4o-mini-2024-07-18</option>
+                <option value="llama3-8b-8192" {% if model == 'llama3-8b-8192' %}selected{% endif %}>llama3-8b-8192 (Groq)</option>
+                <option value="mixtral-8x7b-32768" {% if model == 'mixtral-8x7b-32768' %}selected{% endif %}>mixtral-8x7b-32768 (Groq)</option>
+                <option value="qwen2.5-7b-instruct" {% if model == 'qwen2.5-7b-instruct' %}selected{% endif %}>qwen2.5-7b-instruct (Together)</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <label style="font-size:12px; opacity:.8;">API key (optional)</label><br/>
+              <input type="password" name="api_key" placeholder="sk-..." style="width:100%" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div style="flex:1">
+              <label style="font-size:12px; opacity:.8;">Base URL (OpenAI compatible)</label><br/>
+              <input type="text" name="base_url" placeholder="e.g., https://api.groq.com/openai/v1" style="width:100%" value="{{ base_url or '' }}" />
+            </div>
+          </div>
         </form>
       </div>
 
@@ -43,7 +107,7 @@
         <h3>Answer</h3>
         <div>{{ answer }}</div>
       </div>
-      <div>
+      <div style="margin-top:10px">
         <b>Citations</b><br/>
         {% for c in citations %}
           <span class="chip">{{ c.name }} {{ c.handle }}</span>

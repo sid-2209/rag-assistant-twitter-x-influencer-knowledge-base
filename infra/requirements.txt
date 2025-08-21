@@ -12,3 +12,4 @@ python-dotenv==1.0.1
 chromadb==0.5.11
 python-multipart==0.0.12
 requests>=2.31
+sentence-transformers>=2.6.1

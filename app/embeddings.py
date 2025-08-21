@@ -6,7 +6,7 @@ import math
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from .config import FAISS_MODE, VECTOR_BACKEND, CHROMA_DIR, CHROMA_COLLECTION
+from .config import FAISS_MODE, VECTOR_BACKEND, CHROMA_DIR, CHROMA_COLLECTION, DEFAULT_EMBEDDING_MODEL_NAME
 
 try:  # Optional FAISS import
     import faiss  # type: ignore
@@ -21,7 +21,7 @@ except Exception:  # pragma: no cover - optional import
     OpenAI = None  # type: ignore
 
 
-EMBED_DIMENSION = 1536  # matches text-embedding-3-small output dimension
+EMBED_DIMENSION = 1536  # default when using OpenAI text-embedding-3-small
 
 
 def _normalize(vector: List[float]) -> List[float]:
@@ -39,6 +39,35 @@ def _hashed_embedding(text: str, dim: int = EMBED_DIMENSION) -> List[float]:
     return _normalize(vec)
 
 
+# ---- Optional local sentence-transformers backend (free, offline) ----
+_st_model = None  # lazy-loaded SentenceTransformer
+
+
+def _get_st_model():
+    global _st_model
+    if _st_model is not None:
+        return _st_model
+    try:
+        from sentence_transformers import SentenceTransformer  # type: ignore
+        model_name = DEFAULT_EMBEDDING_MODEL_NAME
+        _st_model = SentenceTransformer(model_name)
+        return _st_model
+    except Exception:
+        return None
+
+
+def _st_embedding(text: str) -> Optional[List[float]]:
+    model = _get_st_model()
+    if model is None:
+        return None
+    try:
+        # normalize embeddings inside ST if available; otherwise normalize here
+        vec = model.encode(text, normalize_embeddings=True)  # type: ignore[attr-defined]
+        return _normalize(list(vec))
+    except Exception:
+        return None
+
+
 def get_embedding(text: str) -> List[float]:
     """Return embedding for text using OpenAI if available, otherwise a hashed fallback.
 
@@ -46,13 +75,23 @@ def get_embedding(text: str) -> List[float]:
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if api_key and OpenAI is not None:  # attempt real embeddings
-        client = OpenAI()
-        resp = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=text,
-        )
-        emb = resp.data[0].embedding
-        return _normalize(list(emb))
+        try:
+            client = OpenAI()
+            resp = client.embeddings.create(
+                model="text-embedding-3-small",
+                input=text,
+            )
+            emb = resp.data[0].embedding
+            return _normalize(list(emb))
+        except Exception:
+            # continue to local or hashed fallback
+            pass
+
+    # Try local sentence-transformers (free, offline)
+    st_vec = _st_embedding(text)
+    if st_vec is not None:
+        return st_vec
+
     # Fallback: hashed embeddings
     return _hashed_embedding(text)
 

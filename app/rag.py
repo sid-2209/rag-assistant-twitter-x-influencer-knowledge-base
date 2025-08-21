@@ -47,17 +47,23 @@ def _fallback_answer(query: str, docs: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {"answer": answer, "citations": citations}
 
 
-def generate_answer(query: str, docs: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_answer(
+    query: str,
+    docs: List[Dict[str, Any]],
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> Dict[str, Any]:
     """Generate an answer using OpenAI GPT with provided docs as context.
 
     Returns:
         dict: { 'answer': str, 'citations': List[Dict] }
     """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or OpenAI is None:
+    key_to_use = api_key or os.getenv("OPENAI_API_KEY")
+    if not key_to_use or OpenAI is None:
         return _fallback_answer(query, docs)
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=key_to_use, base_url=base_url) if base_url else OpenAI(api_key=key_to_use)
     context = _format_context(docs)
 
     messages = [
@@ -74,7 +80,7 @@ def generate_answer(query: str, docs: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     try:
         chat = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),  # 🔹 override with env var
+            model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             messages=messages,
             temperature=0.2,
             max_tokens=300,
