@@ -13,6 +13,7 @@ import os
 from fastapi.staticfiles import StaticFiles
 import json
 from pathlib import Path
+from fastapi.responses import FileResponse
 
 # In-memory database stub populated via /ingest
 db_stub: List[Dict[str, Any]] = []
@@ -244,3 +245,27 @@ async def debug_static() -> Dict[str, Any]:
         "lottie_exists": (static_dir / "lottie" / "bg.json").exists(),
         "icon_exists": (static_dir / "icons" / "RAG icon.png").exists(),
     }
+
+@app.get("/static/{path:path}")
+async def serve_static_fallback(path: str):
+    """Fallback static file serving"""
+    static_dir = Path(__file__).resolve().parent / "static"
+    file_path = static_dir / path
+    
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Determine content type based on file extension
+    content_type = "text/plain"
+    if path.endswith(".json"):
+        content_type = "application/json"
+    elif path.endswith(".png"):
+        content_type = "image/png"
+    elif path.endswith(".jpg") or path.endswith(".jpeg"):
+        content_type = "image/jpeg"
+    elif path.endswith(".css"):
+        content_type = "text/css"
+    elif path.endswith(".js"):
+        content_type = "application/javascript"
+    
+    return FileResponse(file_path, media_type=content_type)
