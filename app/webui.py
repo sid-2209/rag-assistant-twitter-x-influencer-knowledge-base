@@ -123,3 +123,8 @@ async def ui_query(request: Request, q: str = Form(""), model: str = Form("gpt-4
     return templates.TemplateResponse("index.html", context)
 
 
+# Dedicated About page
+@router.get("/ui/about")
+async def ui_about(request: Request):
+    return templates.TemplateResponse("about.html", {"request": request})
+

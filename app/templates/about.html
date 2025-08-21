@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>About · RAG Assistant</title>
+    <style>
+      *, *::before, *::after{ box-sizing: border-box }
+      body{ font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:24px; background:#0B0F19; color:#111826 }
+      .container{ max-width: 920px; margin: 0 auto }
+      h1{ margin: 0 0 10px 0; color:#ffffff; text-shadow: 0 2px 16px rgba(0,0,0,.40), 0 0 18px rgba(255,255,255,.22) }
+      .card{
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 16px; padding: 18px 20px; margin-bottom: 26px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        color: #111826;
+        position: relative; z-index: 0; overflow: visible;
+      }
+      .topbar{ position: sticky; top: 0; z-index: 2; margin: 0 auto 18px; max-width: 920px;
+        background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 14px; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+      }
+      .nav-inner{ display:flex; align-items:center; justify-content: space-between; padding: 8px 12px }
+      .brand{ font-weight: 700; letter-spacing:.3px; color:#111826; opacity:.95 }
+      .brand-logo{ height:28px; width:auto; display:block }
+      @media (min-width: 880px){ .brand-logo{ height:32px } }
+      .links a{ color:#111826; opacity:.9; text-decoration:none; font-size:14px; margin-left:10px; padding:6px 10px; border-radius:8px; transition: background .12s ease }
+      .links a:hover{ background: rgba(124,58,237,0.25) }
+      .site-footer{ margin: 28px auto 8px; text-align:center }
+      .site-footer .credit{ display:inline-block; padding:8px 12px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%); color:#111826; opacity:.75 }
+      /* Uniform text rhythm */
+      .card p{ margin: 0 0 12px }
+      .card h3{ margin: 0 0 8px }
+    </style>
+  </head>
+  <body>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <lottie-player src="/static/lottie/bg.json" autoplay loop mode="bounce" speed="0.6" style="position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; opacity:.98;"></lottie-player>
+    <nav class="topbar">
+      <div class="nav-inner">
+        <img class="brand-logo" src="/static/icons/RAG%20icon.png" alt="RAG Assistant" />
+        <div class="links">
+          <a href="/ui">Home</a>
+          <a href="/docs" target="_blank" rel="noopener">API Docs</a>
+          <a href="/ui/about">About</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="card">
+        <h1>About</h1>
+        <p style="margin:0 0 12px; opacity:.95">
+          RAG Assistant for Twitter/X is an AI‑powered workspace for exploring influencer datasets. Upload JSON or CSV files and the system automatically cleans, normalizes, and deduplicates the
+          data through an ETL pipeline, then creates embeddings using OpenAI or free local sentence‑transformers. Questions are answered with retrieval‑augmented generation (RAG), grounding every response in the ingested context.
+        </p>
+        <p style="margin:0 0 12px; opacity:.95">
+          The service can call any OpenAI‑compatible provider via a custom base URL and model, enabling providers such as Groq and Together AI, as well as your own compatible gateways.
+        </p>
+        <div style="height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent); margin:16px 0"></div>
+        <h3 style="margin:0 0 8px">Key features</h3>
+        <ul style="margin-top:0">
+          <li><b>Multipart upload</b>: Seamless dataset ingestion with persistence of the vector store for fast restarts.</li>
+          <li><b>Dual pipelines</b>: Choose between a lean Vanilla RAG or a LangChain‑based flow (toggle via API).</li>
+          <li><b>Flexible models</b>: Works with OpenAI, Anthropic, and local LLMs (e.g., LLaMA, Mistral).</li>
+          <li><b>Lightweight UI</b>: Built with FastAPI and Jinja2—easy to extend into dashboards or a SaaS.</li>
+        </ul>
+        <div style="height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent); margin:16px 0"></div>
+        <h3 style="margin:0 0 8px">Developer</h3>
+        <p style="margin:0 0 6px">Siddhartha Srivastava</p>
+        <p style="margin:0">
+          GitHub: <a href="https://github.com/sid-2209" target="_blank" rel="noopener">sid-2209</a>
+          &nbsp;·&nbsp;
+          LinkedIn: <a href="https://www.linkedin.com/in/realsiddhartha/" target="_blank" rel="noopener">realsiddhartha</a>
+        </p>
+      </div>
+    </div>
+    <footer class="site-footer"><div class="credit">Built with FastAPI · Jinja2 · RAG · Vector Search</div></footer>
+  </body>
+  </html>
+
