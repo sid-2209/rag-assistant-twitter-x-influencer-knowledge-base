@@ -8,7 +8,27 @@
       *, *::before, *::after{ box-sizing: border-box }
       body{
         font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        margin: 24px; background:#0B0F19; color:#E5E7EB; line-height: 1.5;
+        margin: 24px; 
+        background: linear-gradient(135deg, #a770ef 0%, #cf8bf3 50%, #fdb99b 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+        color:#E5E7EB; line-height: 1.5;
+        position: relative;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+      }
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
       }
       .container{max-width: 920px; margin: 0 auto}
       h1{margin: 0 0 10px 0; color:#ffffff; text-shadow: 0 2px 16px rgba(0,0,0,.40), 0 0 18px rgba(255,255,255,.22)}
@@ -87,15 +107,6 @@
     </style>
   </head>
   <body>
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
-    <lottie-player
-      src="https://assets2.lottiefiles.com/packages/lf20_UJNc2t.json"
-      autoplay
-      loop
-      mode="bounce"
-      speed="0.6"
-      style="position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; opacity:.98;">
-    </lottie-player>
     <nav class="topbar">
       <div class="nav-inner">
         <div class="brand">🤖 RAG Assistant</div>
