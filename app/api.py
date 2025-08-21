@@ -238,6 +238,18 @@ async def debug_static() -> Dict[str, Any]:
         "icon_exists": (static_dir / "icons" / "RAG icon.png").exists(),
     }
 
+@app.get("/debug/files")
+async def debug_files() -> Dict[str, Any]:
+    """Debug endpoint to list all files in the app directory"""
+    app_dir = Path(__file__).resolve().parent
+    return {
+        "app_dir": str(app_dir),
+        "app_dir_exists": app_dir.exists(),
+        "all_files": [str(p.relative_to(app_dir)) for p in app_dir.rglob("*") if p.is_file()],
+        "static_dir_exists": (app_dir / "static").exists(),
+        "static_files": [str(p.relative_to(app_dir)) for p in (app_dir / "static").rglob("*") if p.is_file()] if (app_dir / "static").exists() else [],
+    }
+
 @app.get("/static/{path:path}")
 async def serve_static_fallback(path: str):
     """Fallback static file serving"""
