@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How it Works · RAG Assistant</title>
+    <style>
+      *, *::before, *::after{ box-sizing: border-box }
+      body{ font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:24px; background:#0B0F19; color:#111826 }
+      .container{ max-width: 920px; margin: 0 auto }
+      h1{ margin: 0 0 10px 0; color:#ffffff; text-shadow: 0 2px 16px rgba(0,0,0,.40), 0 0 18px rgba(255,255,255,.22) }
+      .card{
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 16px; padding: 18px 20px; margin-bottom: 26px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        color: #111826;
+        position: relative; z-index: 0; overflow: visible;
+      }
+      .topbar{ position: sticky; top: 0; z-index: 2; margin: 0 auto 18px; max-width: 920px;
+        background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 14px; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+      }
+      .nav-inner{ display:flex; align-items:center; justify-content: space-between; padding: 8px 12px }
+      .brand{ font-weight: 700; letter-spacing:.3px; color:#111826; opacity:.95 }
+      .brand-logo{ height:28px; width:auto; display:block }
+      @media (min-width: 880px){ .brand-logo{ height:32px } }
+      .links a{ color:#111826; opacity:.9; text-decoration:none; font-size:14px; margin-left:10px; padding:6px 10px; border-radius:8px; transition: background .12s ease }
+      .links a:hover{ background: rgba(124,58,237,0.25) }
+      .site-footer{ margin: 28px auto 8px; text-align:center }
+      .site-footer .credit{ display:inline-block; padding:8px 12px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%); color:#111826; opacity:.75 }
+      /* Uniform text rhythm */
+      .card p{ margin: 0 0 12px }
+      .card h3{ margin: 0 0 8px }
+      .step{ display:flex; align-items:flex-start; gap:12px; margin-bottom:16px }
+      .step-number{ display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:999px; background:linear-gradient(135deg,#8B5CF6,#6366F1); color:#fff; font-weight:700; font-size:14px; flex-shrink:0 }
+      .step-content{ flex:1 }
+      .tech-highlight{ background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.2); border-radius:8px; padding:8px 12px; margin:8px 0; font-family:monospace; font-size:13px }
+    </style>
+  </head>
+  <body>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <lottie-player src="/static/lottie/bg.json" autoplay loop mode="bounce" speed="0.6" style="position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; opacity:.98;"></lottie-player>
+    <nav class="topbar">
+      <div class="nav-inner">
+        <img class="brand-logo" src="/static/icons/RAG%20icon.png" alt="RAG Assistant" />
+        <div class="links">
+          <a href="/ui">Home</a>
+          <a href="/docs" target="_blank" rel="noopener">API Docs</a>
+          <a href="/ui/how-it-works">How this works?</a>
+          <a href="/ui/about">About</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="card">
+        <h1>How this works?</h1>
+        <p>RAG Assistant processes influencer data through a multi-stage pipeline to enable intelligent question answering.</p>
+      </div>
+
+      <div class="card">
+        <h3>Data Ingestion & Processing</h3>
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <strong>Upload</strong>: JSON or CSV files containing influencer data (names, handles, niches, sample posts)
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <strong>ETL Pipeline</strong>: Automatic cleaning, normalization, and deduplication
+            <div class="tech-highlight">python -m app.pipeline --input data/raw --output-file data/processed/processed.json</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <strong>Text Chunking</strong>: Long posts are split into smaller, searchable segments
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Vector Embedding & Storage</h3>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <strong>Embedding Generation</strong>: Text chunks are converted to numerical vectors
+            <div class="tech-highlight">OpenAI → sentence-transformers → hashed fallback</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <strong>Vector Storage</strong>: Embeddings are stored in FAISS/NumPy or ChromaDB with metadata
+            <div class="tech-highlight">models/vector_store/ (persistent across restarts)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Query Processing & Retrieval</h3>
+        <div class="step">
+          <div class="step-number">6</div>
+          <div class="step-content">
+            <strong>Question Embedding</strong>: User questions are converted to the same vector space
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">7</div>
+          <div class="step-content">
+            <strong>Similarity Search</strong>: Find the most relevant influencer snippets using vector similarity
+            <div class="tech-highlight">Top-K retrieval with configurable similarity thresholds</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">8</div>
+          <div class="step-content">
+            <strong>Context Assembly</strong>: Retrieved snippets are formatted as context for the LLM
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Answer Generation</h3>
+        <div class="step">
+          <div class="step-number">9</div>
+          <div class="step-content">
+            <strong>LLM Processing</strong>: Context + question are sent to the selected language model
+            <div class="tech-highlight">OpenAI GPT-4o, Groq LLaMA, Together AI, or custom providers</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">10</div>
+          <div class="step-content">
+            <strong>Response Generation</strong>: LLM generates a grounded answer based on the provided context
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">11</div>
+          <div class="step-content">
+            <strong>Citation Extraction</strong>: Source influencers are identified and returned with the answer
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Key Technical Features</h3>
+        <ul>
+          <li><strong>Fallback Chain</strong>: OpenAI → local sentence-transformers → deterministic hashing</li>
+          <li><strong>Provider Flexibility</strong>: Any OpenAI-compatible API via custom base URL</li>
+          <li><strong>Persistence</strong>: Vector store survives server restarts</li>
+          <li><strong>Scalability</strong>: FAISS for fast similarity search on large datasets</li>
+          <li><strong>Reliability</strong>: Graceful degradation when APIs are unavailable</li>
+        </ul>
+      </div>
+    </div>
+    <footer class="site-footer"><div class="credit">Built with FastAPI · Jinja2 · RAG · Vector Search</div></footer>
+  </body>
+</html>
