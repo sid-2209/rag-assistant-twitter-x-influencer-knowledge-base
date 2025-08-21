@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Updates · RAG Assistant</title>
+    <style>
+      *, *::before, *::after{ box-sizing: border-box }
+      body{ font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:24px; background:#0B0F19; color:#111826 }
+      .container{ max-width: 920px; margin: 0 auto }
+      h1{ margin: 0 0 10px 0; color:#ffffff; text-shadow: 0 2px 16px rgba(0,0,0,.40), 0 0 18px rgba(255,255,255,.22) }
+      .card{
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 16px; padding: 18px 20px; margin-bottom: 26px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        color: #111826;
+        position: relative; z-index: 0; overflow: visible;
+      }
+      .topbar{ position: sticky; top: 0; z-index: 2; margin: 0 auto 18px; max-width: 920px;
+        background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 14px; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+      }
+      .nav-inner{ display:flex; align-items:center; justify-content: space-between; padding: 8px 12px }
+      .brand{ font-weight: 700; letter-spacing:.3px; color:#111826; opacity:.95 }
+      .brand-logo{ height:28px; width:auto; display:block }
+      @media (min-width: 880px){ .brand-logo{ height:32px } }
+      .links a{ color:#111826; opacity:.9; text-decoration:none; font-size:14px; margin-left:10px; padding:6px 10px; border-radius:8px; transition: background .12s ease }
+      .links a:hover{ background: rgba(124,58,237,0.25) }
+      .site-footer{ margin: 28px auto 8px; text-align:center }
+      .site-footer .credit{ display:inline-block; padding:8px 12px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%); color:#111826; opacity:.75 }
+      /* Uniform text rhythm */
+      .card p{ margin: 0 0 12px }
+      .card h3{ margin: 0 0 8px }
+      .version-badge{ display:inline-block; background:linear-gradient(135deg,#8B5CF6,#6366F1); color:#fff; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; margin-left:8px }
+      .feature-list{ list-style:none; padding:0; margin:0 }
+      .feature-list li{ padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1) }
+      .feature-list li:last-child{ border-bottom:none }
+      .feature-list li::before{ content:"✓"; color:#10B981; font-weight:bold; margin-right:8px }
+      .upcoming{ background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); border-radius:8px; padding:12px; margin:8px 0 }
+      .upcoming h4{ margin:0 0 8px 0; color:#1E40AF }
+      .upcoming ul{ margin:0; padding-left:20px }
+      .upcoming li{ margin:4px 0 }
+    </style>
+  </head>
+  <body>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <lottie-player src="/static/lottie/bg.json" autoplay loop mode="bounce" speed="0.6" style="position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; opacity:.98;"></lottie-player>
+    <nav class="topbar">
+      <div class="nav-inner">
+        <img class="brand-logo" src="/static/icons/RAG%20icon.png" alt="RAG Assistant" />
+        <div class="links">
+          <a href="/ui">Home</a>
+          <a href="/docs" target="_blank" rel="noopener">API Docs</a>
+          <a href="/ui/how-it-works">How this works?</a>
+          <a href="/ui/updates">Updates</a>
+          <a href="/ui/about">About</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="card">
+        <h1>Updates<span class="version-badge">v1.0</span></h1>
+        <p>Track the latest features and upcoming improvements to RAG Assistant.</p>
+      </div>
+
+      <div class="card">
+        <h3>Current Version: Vanilla RAG (v1.0)</h3>
+        <p>Our custom-built RAG pipeline optimized for influencer data analysis.</p>
+        
+        <h4>Current Features:</h4>
+        <ul class="feature-list">
+          <li>Custom ETL pipeline for influencer data processing</li>
+          <li>Vector search with OpenAI embeddings and local fallbacks</li>
+          <li>FAISS/NumPy vector storage with persistence</li>
+          <li>Multi-provider LLM support (OpenAI, Groq, Together AI)</li>
+          <li>Modern HTML web interface with glassmorphism design</li>
+          <li>Real-time file upload and ingestion</li>
+          <li>Citation-based responses with influencer attribution</li>
+          <li>Docker deployment with health checks</li>
+          <li>Comprehensive test coverage</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Coming Soon: LangChain RAG (v2.0)</h3>
+        <p>Enhanced RAG capabilities with LangChain integration for better query responses and more natural conversations.</p>
+        
+        <div class="upcoming">
+          <h4>🚀 New Features in v2.0</h4>
+          <ul>
+            <li><strong>Toggle Functionality</strong>: Switch between Vanilla RAG and LangChain RAG modes</li>
+            <li><strong>Enhanced LLM Integration</strong>: Better prompt engineering and response generation</li>
+            <li><strong>Natural Conversations</strong>: More contextual and conversational query responses</li>
+            <li><strong>Advanced Retrieval</strong>: Improved document retrieval and ranking</li>
+            <li><strong>Memory & Context</strong>: Conversation history and context preservation</li>
+            <li><strong>Custom Chains</strong>: Configurable RAG chains for different use cases</li>
+          </ul>
+        </div>
+
+        <h4>Technical Improvements:</h4>
+        <ul class="feature-list">
+          <li>LangChain framework integration</li>
+          <li>Advanced prompt templates and chains</li>
+          <li>Better document processing and chunking</li>
+          <li>Enhanced similarity search algorithms</li>
+          <li>Improved error handling and fallbacks</li>
+          <li>Performance optimizations</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Roadmap</h3>
+        <p>Future enhancements and planned features for RAG Assistant.</p>
+        
+        <h4>Planned Features:</h4>
+        <ul class="feature-list">
+          <li>Multi-language support for international influencer data</li>
+          <li>Advanced analytics and insights dashboard</li>
+          <li>Real-time data streaming and updates</li>
+          <li>Custom model fine-tuning capabilities</li>
+          <li>API rate limiting and usage analytics</li>
+          <li>Enhanced security and authentication</li>
+          <li>Mobile-responsive UI improvements</li>
+          <li>Integration with social media APIs</li>
+        </ul>
+      </div>
+    </div>
+    <footer class="site-footer"><div class="credit">Built with FastAPI · Jinja2 · RAG · Vector Search</div></footer>
+  </body>
+</html>

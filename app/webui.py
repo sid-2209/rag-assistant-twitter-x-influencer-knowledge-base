@@ -134,3 +134,9 @@ async def ui_about(request: Request):
 async def ui_how_it_works(request: Request):
     return templates.TemplateResponse("how-it-works.html", {"request": request})
 
+
+# Updates page
+@router.get("/ui/updates")
+async def ui_updates(request: Request):
+    return templates.TemplateResponse("updates.html", {"request": request})
+
