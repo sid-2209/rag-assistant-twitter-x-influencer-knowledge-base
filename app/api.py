@@ -63,22 +63,28 @@ class FeedbackResponse(BaseModel):
 
 
 app = FastAPI(title="Twitter Influencer Assistant")
-# Serve static assets (e.g., lottie background)
+
+# Minimal HTML UI (optional)
+if os.getenv("ENABLE_WEB_UI", "false").lower() in ("1", "true", "yes", "on"):
+    from .webui import router as ui_router  # delayed import to avoid cycles
+    app.include_router(ui_router)
+
+# Serve static assets (e.g., lottie background) - AFTER router inclusion
 static_dir = str(Path(__file__).resolve().parent / "static")
 print(f"Mounting static files from: {static_dir}")
 print(f"Static directory exists: {Path(static_dir).exists()}")
 if Path(static_dir).exists():
     print(f"Static directory contents: {list(Path(static_dir).rglob('*'))}")
 
-app.mount(
-    "/static",
-    StaticFiles(directory=static_dir),
-    name="static",
-)
-# Minimal HTML UI (optional)
-if os.getenv("ENABLE_WEB_UI", "false").lower() in ("1", "true", "yes", "on"):
-    from .webui import router as ui_router  # delayed import to avoid cycles
-    app.include_router(ui_router)
+try:
+    app.mount(
+        "/static",
+        StaticFiles(directory=static_dir),
+        name="static",
+    )
+    print("Static files mounted successfully")
+except Exception as e:
+    print(f"Failed to mount static files: {e}")
 
 
 @app.get("/healthz")
