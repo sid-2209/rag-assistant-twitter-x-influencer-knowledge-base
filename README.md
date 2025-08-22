@@ -9,19 +9,13 @@ An AI-powered Retrieval-Augmented Generation (RAG) system that helps users disco
 
 ---
 
-## 🔗 Quick Links
-- [Features](#-features)
-- [Project Structure](#-project-structure)
-- [Quickstart](#-quickstart)
-- [Configuration](#-configuration-env)
-- [API Endpoints](#-api-endpoints)
-- [Web UI](#-web-ui)
-- [ETL and Persistence](#-etl-and-persistence)
-- [Developer CLI & Commands](#-developer-cli-and-commands)
-- [Docker & Compose](#-docker--compose)
-- [Testing](#-testing)
-- [Tech Notes](#-tech-notes)
-- [CI/CD & Deployment](#-cicd--deployment)
+## 🖥️ Demo
+
+### Homepage
+![Homepage](app/static/demo_images/homepage.png)
+
+### History Page
+![History](app/static/demo_images/History.png)
 
 ---
 
@@ -56,6 +50,7 @@ twitter-influencer-assistant/
       about.html        # About page template
     static/
       icons/            # UI icons (RAG icon.png)
+      demo_images/      # Demo screenshots
       lottie/           # Background animations (bg.json)
   data/
     raw/                # Raw influencer data (JSON/CSV)
@@ -73,21 +68,6 @@ twitter-influencer-assistant/
   COMMANDS.txt          # Handy commands for setup, run, tests, ETL, Docker
   pyproject.toml
   README.md
-```
-
----
-
-## 🧭 Architecture (High-Level)
-```mermaid
-graph TD;
-  A[Raw data] --> B[ETL pipeline];
-  B --> C[Processed JSON];
-  C --> D[VectorStore];
-  D --> E[Persisted store];
-  F[FastAPI API] --> D;
-  F --> G[Endpoints];
-  F --> H[Web UI];
-  F --> I[Mock endpoint];
 ```
 
 ---
