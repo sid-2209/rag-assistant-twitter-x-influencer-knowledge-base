@@ -20,7 +20,8 @@ MODELS_DIR: Final[Path] = BASE_DIR / "models"
 # Models and pipeline defaults (placeholders)
 DEFAULT_EMBEDDING_MODEL_NAME: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_RERANKER_MODEL_NAME: Final[str] = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-DEFAULT_GENERATION_MODEL_NAME: Final[str] = "gpt-4o-mini"  # Placeholder; replace with your LLM provider
+# Default model for generation
+DEFAULT_GENERATION_MODEL_NAME = os.getenv("OPENAI_MODEL", "llama-3.1-8b-instant")  # Updated to current Groq model
 
 # API and app constants
 APP_NAME: Final[str] = "twitter-influencer-assistant"

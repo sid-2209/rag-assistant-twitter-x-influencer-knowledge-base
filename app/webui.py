@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
-import uuid
-from urllib.parse import quote_plus
-from typing import Any, Dict, List, Optional
-
-from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
+import os
+import uuid
+from typing import Dict, Any, List
+from collections import Counter
 
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
@@ -37,90 +37,188 @@ async def ui_home(request: Request):
     )
 
 
-@router.post("/ui/upload")
-async def ui_upload(request: Request, file: UploadFile = File(...)):
-    try:
-        # Save into a unique per-upload directory to avoid mixing with sample datasets
-        uploads_root = Path(__file__).resolve().parent.parent / "data/raw/uploads"
-        upload_dir = uploads_root / uuid.uuid4().hex
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        target = upload_dir / file.filename
-        target.write_bytes(await file.read())
-        # Lazy import to avoid circular import with app.api
-        from importlib import import_module
-        api = import_module("app.api")
-        # If a directory is provided, ETL will run over just this upload directory
-        _ = await api.ingest(api.IngestRequest(dataset_path=str(upload_dir)))
-        # Derive count, names, and stats from the in-memory db for accuracy
-        db: List[Dict[str, Any]] = list(getattr(api, "db_stub", []) or [])
-        count = len(db)
-        names: List[str] = []
-        handles_set = set()
-        from collections import Counter
-        hashtag_counter: Counter[str] = Counter()
-        for r in db:
-            name = r.get("name") or r.get("metadata", {}).get("name")
-            if name:
-                names.append(str(name))
-            handle = r.get("handle") or r.get("metadata", {}).get("handle")
-            if handle:
-                handles_set.add(str(handle))
-            post = r.get("sample_post") or r.get("metadata", {}).get("sample_post") or ""
-            for token in str(post).split():
-                if token.startswith("#") and len(token) > 1:
-                    tag = "#" + "".join(ch for ch in token[1:].lower() if ch.isalnum() or ch == "_")
-                    if len(tag) > 1:
-                        hashtag_counter[tag] += 1
-        # Update last ingest cache
-        global LAST_INGEST
-        LAST_INGEST = {
-            "names": names,
-            "names_text": "\n".join(names),
-            "stats": {
-                "unique_handles": len(handles_set),
-                "top_hashtags": hashtag_counter.most_common(10),
-            },
-        }
-        return RedirectResponse(
-            url=f"/ui?ingested={count}",
-            status_code=303,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
-
-
 @router.get("/ui/names.txt")
 async def download_names() -> str:
     return (LAST_INGEST.get("names_text") or "").strip()
 
 
 @router.post("/ui/query")
-async def ui_query(request: Request, q: str = Form(""), model: str = Form("gpt-4o-mini"), api_key: str = Form(""), base_url: str = Form("") ):
-    # Lazy import to avoid circular import with app.api
-    from importlib import import_module
-    api = import_module("app.api")
-    # Temporarily override env for request-scoped API key if provided
-    import os
-    prev_key = os.environ.get("OPENAI_API_KEY")
-    if api_key:
-        os.environ["OPENAI_API_KEY"] = api_key
-    qr = api.QueryRequest(query=q, implementation="vanilla", model=model, api_key=api_key or None, base_url=base_url or None)
-    result = await api.query(qr)
-    # Restore
-    if api_key:
-        if prev_key is None:
-            os.environ.pop("OPENAI_API_KEY", None)
-        else:
-            os.environ["OPENAI_API_KEY"] = prev_key
-    context: Dict[str, Any] = {
-        "request": request,
-        "answer": result.answer,
-        "citations": result.citations,
-        "q": q,
-        "model": model,
-        "base_url": base_url or "",
-    }
-    return templates.TemplateResponse("index.html", context)
+async def ui_query(request: Request):
+    global LAST_INGEST  # Declare global at the top
+    try:
+        print("Starting UI form processing...")
+        form = await request.form()
+        action = form.get("action", "query")
+        
+        # Get form values for persistence
+        model = form.get("model", "llama-3.1-8b-instant")
+        api_key = form.get("api_key", "").strip()
+        base_url = form.get("base_url", "").strip()
+        query = form.get("q", "").strip()
+        
+        # Handle upload action
+        if action == "upload":
+            print("Processing upload action...")
+            file = form.get("file")
+            if not file or not hasattr(file, 'filename'):
+                return templates.TemplateResponse("index.html", {
+                    "request": request,
+                    "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+                    "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+                    "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+                    "stats": LAST_INGEST.get("stats", {}),
+                    "q": query,
+                    "model": model,
+                    "api_key": api_key,
+                    "base_url": base_url,
+                    "error": "Please select a file to upload"
+                })
+            
+            try:
+                # Save into a unique per-upload directory to avoid mixing with sample datasets
+                uploads_root = Path(__file__).resolve().parent.parent / "data/raw/uploads"
+                upload_dir = uploads_root / uuid.uuid4().hex
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                target = upload_dir / file.filename
+                target.write_bytes(await file.read())
+                
+                # Lazy import to avoid circular import with app.api
+                from importlib import import_module
+                api = import_module("app.api")
+                
+                # If a directory is provided, ETL will run over just this upload directory
+                _ = await api.ingest(api.IngestRequest(dataset_path=str(upload_dir)))
+                
+                # Derive count, names, and stats from the in-memory db for accuracy
+                db: List[Dict[str, Any]] = list(getattr(api, "db_stub", []) or [])
+                count = len(db)
+                names: List[str] = []
+                handles_set = set()
+                hashtag_counter: Counter[str] = Counter()
+                
+                for r in db:
+                    name = r.get("name") or r.get("metadata", {}).get("name")
+                    if name:
+                        names.append(str(name))
+                    handle = r.get("handle") or r.get("metadata", {}).get("handle")
+                    if handle:
+                        handles_set.add(str(handle))
+                    post = r.get("sample_post") or r.get("metadata", {}).get("sample_post") or ""
+                    for token in str(post).split():
+                        if token.startswith("#") and len(token) > 1:
+                            tag = "#" + "".join(ch for ch in token[1:].lower() if ch.isalnum() or ch == "_")
+                            if len(tag) > 1:
+                                hashtag_counter[tag] += 1
+                
+                # Update last ingest cache
+                LAST_INGEST = {
+                    "count": count,
+                    "names": names,
+                    "names_text": "\n".join(names),
+                    "stats": {
+                        "unique_handles": len(handles_set),
+                        "top_hashtags": hashtag_counter.most_common(10),
+                    },
+                }
+                
+                print(f"Upload successful: {count} records ingested")
+                
+            except Exception as e:
+                print(f"Upload error: {e}")
+                return templates.TemplateResponse("index.html", {
+                    "request": request,
+                    "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+                    "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+                    "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+                    "stats": LAST_INGEST.get("stats", {}),
+                    "q": query,
+                    "model": model,
+                    "api_key": api_key,
+                    "base_url": base_url,
+                    "error": f"Upload failed: {str(e)}"
+                })
+        
+        # Handle query action
+        elif action == "query":
+            if not query:
+                print("Empty query, returning form...")
+                return templates.TemplateResponse("index.html", {
+                    "request": request,
+                    "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+                    "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+                    "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+                    "stats": LAST_INGEST.get("stats", {}),
+                    "q": query,
+                    "model": model,
+                    "api_key": api_key,
+                    "base_url": base_url
+                })
+            
+            print(f"Processing query: {query}")
+            print(f"Model: {model}, API key provided: {bool(api_key)}, Base URL provided: {bool(base_url)}")
+            
+            # Lazy import to avoid circular import
+            from importlib import import_module
+            api = import_module("app.api")
+            
+            print("Calling API query endpoint...")
+            # Call the API
+            response = await api.query(api.QueryRequest(
+                query=query,
+                model=model if model else None,
+                api_key=api_key if api_key else None,
+                base_url=base_url if base_url else None
+            ))
+            
+            print("API call successful, extracting hallucination analysis...")
+            # Extract hallucination analysis
+            hallucination_analysis = response.hallucination_analysis
+            
+            print("Rendering template with results...")
+            return templates.TemplateResponse("index.html", {
+                "request": request,
+                "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+                "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+                "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+                "stats": LAST_INGEST.get("stats", {}),
+                "q": query,
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+                "answer": response.answer,
+                "citations": response.citations,
+                "hallucination_analysis": hallucination_analysis
+            })
+        
+        # Default: just return the form with current state
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+            "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+            "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+            "stats": LAST_INGEST.get("stats", {}),
+            "q": query,
+            "model": model,
+            "api_key": api_key,
+            "base_url": base_url
+        })
+        
+    except Exception as e:
+        print(f"Error in UI form processing: {e}")
+        import traceback
+        traceback.print_exc()
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,
+            "first_names": ", ".join((LAST_INGEST.get("names") or [])[:FIRST_N]) if LAST_INGEST else "",
+            "has_download": bool(LAST_INGEST.get("names_text")) if LAST_INGEST else False,
+            "stats": LAST_INGEST.get("stats", {}),
+            "q": query if 'query' in locals() else "",
+            "model": model if 'model' in locals() else "llama-3.1-8b-instant",
+            "api_key": api_key if 'api_key' in locals() else "",
+            "base_url": base_url if 'base_url' in locals() else "",
+            "error": f"Error: {str(e)}"
+        })
 
 
 # Dedicated About page

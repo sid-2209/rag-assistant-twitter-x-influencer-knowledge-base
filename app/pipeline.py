@@ -35,6 +35,22 @@ def _clean_whitespace(text: Optional[str]) -> Optional[str]:
     return " ".join(str(text).split())
 
 
+def _pick(rec: Dict[str, Any], keys: List[str]) -> Optional[str]:
+    for k in keys:
+        v = rec.get(k)
+        if v is None:
+            continue
+        s = str(v).strip()
+        if s:
+            return s
+    return None
+
+
+def _make_handle_from_name(name: str) -> str:
+    base = "".join(ch for ch in name.lower() if ch.isalnum())
+    return f"@{base}" if base else "@"
+
+
 def _normalize_niche(niche: Any) -> Optional[str]:
     if niche is None:
         return None
@@ -127,17 +143,37 @@ def normalize_and_validate(records: Iterable[Dict[str, Any]], max_chunk_len: int
     seen_name_keys: Set[str] = set()
 
     for rec in records:
+        # Flexible field mapping for varied datasets (CSV/JSON)
+        name_val = _pick(rec, [
+            "name", "author", "user_name", "username", "screen_name", "display_name",
+        ]) or ""
+        handle_val = _pick(rec, [
+            "handle", "screen_name", "username", "user", "user_handle",
+        ]) or ""
+        followers_val = _pick(rec, [
+            "followers", "followers_count", "follower_count", "user_followers",
+        ])
+        niche_val = _pick(rec, ["niche", "topic", "category", "tags"]) or None
+        post_val = _pick(rec, [
+            "sample_post", "content", "text", "tweet", "message", "body",
+        ])
+
+        name_clean = _clean_whitespace(name_val) or ""
+        handle_clean = _clean_whitespace(handle_val) or ""
+        if not handle_clean and name_clean:
+            handle_clean = _make_handle_from_name(name_clean)
+
         raw = RawRecord(
             id=str(rec.get("id")) if rec.get("id") is not None else None,
-            name=_clean_whitespace(rec.get("name") or "") or "",
-            handle=_clean_whitespace(rec.get("handle") or "") or "",
-            followers=_parse_int(rec.get("followers")),
-            niche=_normalize_niche(rec.get("niche")),
-            sample_post=_clean_whitespace(rec.get("sample_post")) or _clean_whitespace(rec.get("post")),
+            name=name_clean,
+            handle=handle_clean,
+            followers=_parse_int(followers_val),
+            niche=_normalize_niche(niche_val),
+            sample_post=_clean_whitespace(post_val),
         )
 
-        # Required fields
-        if not raw.name or not raw.handle:
+        # Require at least a name or handle to proceed
+        if not raw.name and (not raw.handle or raw.handle == "@"):
             continue
 
         handle_norm = _ensure_at_prefix(raw.handle.lower())

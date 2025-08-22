@@ -52,6 +52,7 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     citations: List[Dict[str, Any]]
+    hallucination_analysis: Dict[str, Any]
 
 
 class FeedbackRequest(BaseModel):
@@ -157,62 +158,152 @@ async def upload_dataset(
 
 @app.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest) -> QueryResponse:
-    if not db_stub:
-        return QueryResponse(answer="No data ingested yet", citations=[])
-
-    results = [
-        r for r in vector_store.search(request.query, top_k=VECTOR_TOP_K)
-        if float(r.get("score", 0.0)) > 0.0
-    ]
-
-    # Optional lightweight reranker by keyword overlap
-    if RERANKER_ENABLED and results:
-        q_tokens = {t for t in request.query.lower().split() if t.isalnum()}
-        def overlap(meta: Dict[str, Any]) -> int:
-            text = f"{meta.get('niche','')} {meta.get('sample_post','')} {meta.get('name','')} {meta.get('handle','')}".lower()
-            return sum(1 for t in q_tokens if t in text)
-        results.sort(key=overlap, reverse=True)
-    if not results:
-        # Fallback: simple keyword match on ingested records
-        q = request.query.lower()
-        keyword_hits: List[Dict[str, Any]] = []
-        for record in db_stub:
-            haystacks = [
-                str(record.get("niche", "")),
-                str(record.get("sample_post", "")),
-                str(record.get("name", "")),
-                str(record.get("handle", "")),
-            ]
-            if any(q in h.lower() for h in haystacks):
-                keyword_hits.append(record)
-
-        if not keyword_hits:
-            return QueryResponse(answer="No influencers found", citations=[])
-
-        rag_result = generate_answer(request.query, keyword_hits)
-        citations = [
-            {k: c.get(k) for k in ("name", "handle", "niche", "followers")}
-            for c in rag_result.get("citations", [])
-        ]
-        return QueryResponse(answer=rag_result.get("answer", ""), citations=citations)
-
-    # Allow runtime model/key for future extensions
-    implementation = (request.implementation or "vanilla").lower()
-    if implementation == "langchain":
-        rag_result = generate_answer_langchain(request.query, results, request.model or "gpt-4o-mini", request.api_key)
-    else:
-        rag_result = generate_answer(
-            request.query,
-            results,
-            model=request.model or None,
-            api_key=request.api_key or None,
-            base_url=request.base_url or None,
+    global vector_store
+    query_text = request.query.strip()
+    if not query_text:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    
+    try:
+        print(f"Processing query: {query_text}")
+        
+        # Search for relevant documents
+        results = vector_store.search(query_text, VECTOR_TOP_K)
+        print(f"Found {len(results)} results from vector search")
+        
+        # Filter results with positive scores
+        filtered_results = [r for r in results if r.get("score", 0) > 0]
+        print(f"Filtered to {len(filtered_results)} results with positive scores")
+        
+        # Intelligent filtering for handle-specific queries
+        import re
+        handle_match = re.search(r'@(\w+)', query_text)
+        if handle_match:
+            target_handle = handle_match.group(1).lower()
+            print(f"Detected handle-specific query for: @{target_handle}")
+            
+            # Check if query is asking about handle existence vs handle content
+            query_lower = query_text.lower()
+            is_existence_query = any(word in query_lower for word in ["exist", "exists", "mentioned", "found", "appear", "mention"])
+            is_content_query = any(word in query_lower for word in ["niche", "who", "what", "content", "post", "tweet", "followers"])
+            
+            # If it's a content query about a specific handle, filter for mentions
+            if is_content_query and target_handle:
+                is_existence_query = True  # Treat content queries as existence queries for filtering
+            
+            if is_existence_query:
+                # Filter to only include citations that mention the handle
+                handle_mentioned_results = []
+                for result in filtered_results:
+                    # Check in the content/sample_post
+                    content = result.get("sample_post", "") or result.get("text", "") or result.get("content", "")
+                    if target_handle in content.lower():
+                        handle_mentioned_results.append(result)
+                
+                if handle_mentioned_results:
+                    print(f"Filtered to {len(handle_mentioned_results)} results mentioning handle @{target_handle}")
+                    filtered_results = handle_mentioned_results
+                else:
+                    print(f"No results found mentioning handle @{target_handle}")
+                    # Keep original results but mark that the specific handle wasn't found
+                    filtered_results = filtered_results[:3]  # Limit to top 3 for context
+            else:
+                # Filter to only include citations from the specific handle
+                handle_specific_results = []
+                for result in filtered_results:
+                    metadata = result.get("metadata", {})
+                    handle = metadata.get("handle", result.get("handle", ""))
+                    if handle and target_handle in handle.lower():
+                        handle_specific_results.append(result)
+                
+                if handle_specific_results:
+                    print(f"Filtered to {len(handle_specific_results)} results from handle @{target_handle}")
+                    filtered_results = handle_specific_results
+                else:
+                    print(f"No results found for handle @{target_handle}")
+                    # Keep original results but mark that the specific handle wasn't found
+                    filtered_results = filtered_results[:3]  # Limit to top 3 for context
+        
+        if not filtered_results:
+            print("No filtered results found, returning default response")
+            return QueryResponse(
+                answer="I don't have enough information to answer this question. Please upload relevant data first.",
+                citations=[],
+                hallucination_analysis={
+                    "is_hallucination": True,
+                    "confidence": "high",
+                    "score": 1.0,
+                    "reason": "No relevant citations found",
+                    "suggestions": ["Upload more relevant data", "Try a different query"]
+                }
+            )
+        
+        print("Generating answer with hallucination detection...")
+        # Generate answer with hallucination detection
+        response = generate_answer(
+            query=query_text,
+            citations=filtered_results,
+            model=request.model,
+            api_key=request.api_key,
+            base_url=request.base_url
         )
-    citations = [
-        {k: c.get(k) for k in ("name", "handle", "niche", "followers")}
-        for c in rag_result.get("citations", [])
-    ]
-    return QueryResponse(answer=rag_result.get("answer", ""), citations=citations)
+        
+        # Ensure response is valid and contains meaningful content
+        if not response or not isinstance(response, dict):
+            print("Invalid response structure, creating fallback")
+            response = {
+                "answer": "I couldn't generate a response. Please try again.",
+                "citations": filtered_results,
+                "hallucination_analysis": {
+                    "is_hallucination": True,
+                    "confidence": "high", 
+                    "score": 1.0,
+                    "reason": "Response generation failed",
+                    "suggestions": ["Try again with a different query"]
+                }
+            }
+
+        answer = response.get('answer', '') or ''
+        
+        # Check if the answer is meaningful (not an error message)
+        error_indicators = [
+            "i couldn't generate a response",
+            "i apologize, but",
+            "no response generated",
+            "error occurred",
+            "failed to generate",
+            "api error",
+            "model error"
+        ]
+        
+        # More specific check to avoid triggering on legitimate "not found" responses
+        is_error_answer = any(indicator in answer.lower() for indicator in error_indicators) and not (
+            "couldn't find" in answer.lower() or 
+            "not found" in answer.lower() or
+            "no information" in answer.lower()
+        )
+        
+        if is_error_answer and filtered_results:
+            print("Detected error answer, generating fallback from citations")
+            # Generate a fallback answer directly from citations
+            from .rag import _generate_fallback_answer
+            fallback_answer = _generate_fallback_answer(query_text, filtered_results)
+            response["answer"] = fallback_answer
+            answer = fallback_answer
+        
+        print(f"Generated response with answer length: {len(answer)}")
+        print(f"Hallucination analysis: {response.get('hallucination_analysis', {}).get('is_hallucination', 'unknown')}")
+        
+        return QueryResponse(
+            answer=response["answer"],
+            citations=response["citations"],
+            hallucination_analysis=response["hallucination_analysis"]
+        )
+        
+    except Exception as e:
+        print(f"Error in query endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
 
 
 @app.post("/feedback", response_model=FeedbackResponse)

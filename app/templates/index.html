@@ -97,6 +97,96 @@
       .help__modal{ position:absolute; top:26px; left:50%; transform: translateX(-50%); width:300px; max-width:92vw; padding:12px 14px; border-radius:12px; background:#ffffff; border:1px solid rgba(0,0,0,0.12); -webkit-backdrop-filter: none; backdrop-filter: none; color:#0b1220; box-shadow:0 14px 34px rgba(0,0,0,.48); opacity:0; visibility:hidden; pointer-events:none; transition: opacity .12s ease, visibility .12s ease; z-index: 9999; font-size:14px; line-height:1.55; letter-spacing:.1px; overflow-wrap:anywhere }
       .card:has(.help:hover), .card:has(.help:focus-within){ z-index: 1000 }
       .help:hover .help__modal, .help:focus-within .help__modal{ opacity:1; visibility:visible; pointer-events:auto }
+        .citation {
+            background: rgba(255,255,255,0.9);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid #8ca6db;
+        }
+        .citation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .citation-header strong {
+            color: #2d3748;
+        }
+        .niche {
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #4a5568;
+        }
+        .score {
+            font-size: 12px;
+            color: #718096;
+        }
+        .citation-content {
+            color: #4a5568;
+            font-style: italic;
+            line-height: 1.4;
+        }
+        .citations h4 {
+            margin: 0 0 12px 0;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.9);
+            color: #2d3748;
+            font-size: 14px;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #8ca6db;
+            box-shadow: 0 0 0 2px rgba(140, 166, 219, 0.2);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #8ca6db 0%, #b993d6 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(140, 166, 219, 0.3);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .upload-success {
+            background: rgba(5, 150, 105, 0.1);
+            border-left: 4px solid #059669;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+        .upload-success .title {
+            color: #059669;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .upload-success .details {
+            font-size: 13px;
+            color: #065f46;
+        }
+        .upload-success .stats {
+            font-size: 12px;
+            color: #065f46;
+            margin-top: 4px;
+        }
     </style>
   </head>
   <body>
@@ -120,66 +210,63 @@
       </p>
 
       <div class="card">
-        <form action="/ui/upload" method="post" enctype="multipart/form-data">
-          <label class="label-row"><b>Upload dataset (JSON/CSV)</b>
-            <span class="help" tabindex="0" aria-label="Help: Upload dataset">
-              <span class="help__icon">?</span>
-              <span class="help__modal" role="tooltip">Upload a JSON or CSV file of influencer data. The ETL pipeline cleans, normalizes, and deduplicates records, then persists a vector index for fast retrieval.</span>
-            </span>
-          </label>
-          <div class="row row-upload">
-            <input type="file" name="file" />
-            <button type="submit" class="btn-primary">Ingest</button>
-          </div>
-          {% if ingested %}
-            <div class="hr"></div>
-            <div class="label-row" style="opacity:.9; margin-bottom:6px;">Ingested <b>{{ ingested }}</b> records.
-              <span class="help" tabindex="0" aria-label="Help: Ingested count">
+        <form action="/ui/query" method="post" enctype="multipart/form-data">
+          <!-- Upload Section -->
+          <div style="margin-bottom: 24px;">
+            <label class="label-row"><b>Upload dataset (JSON/CSV)</b>
+              <span class="help" tabindex="0" aria-label="Help: Upload dataset">
                 <span class="help__icon">?</span>
-                <span class="help__modal" role="tooltip">Number of records successfully processed by the ETL pipeline and included in the vector index.</span>
+                <span class="help__modal" role="tooltip">Upload a JSON or CSV file containing Twitter/X influencer data. The system will process and index it for querying.</span>
               </span>
+            </label>
+            <div class="row">
+              <input type="file" name="file" accept=".json,.csv" style="flex:1; min-width:260px" />
+              <button type="submit" name="action" value="upload" class="btn-primary">Ingest</button>
             </div>
-            {% if first_names %}
-              <div style="opacity:.8; font-size: 13px; margin-bottom:6px;">First {{ first_names.split(',')|length }} names: {{ first_names }}</div>
-            {% endif %}
-            {% if has_download %}
-              <a href="/ui/names.txt" download style="font-size:13px;">Download full names list</a>
-            {% endif %}
-            {% if stats and (stats.unique_handles or stats.top_hashtags) %}
-              <div class="hr"></div>
-              <div class="label-row" style="opacity:.9; margin-bottom:4px;"><b>Stats</b>
-                <span class="help" tabindex="0" aria-label="Help: Stats">
-                  <span class="help__icon">?</span>
-                  <span class="help__modal" role="tooltip">Quick overview of unique handles and most frequent hashtags observed in sample posts.</span>
-                </span>
+            
+            <!-- Ingest Results Display -->
+            {% if ingested and ingested > 0 %}
+              <div class="upload-success">
+                <div class="title">✅ Successfully ingested {{ ingested }} records</div>
+                {% if first_names %}
+                  <div class="details">Sample: {{ first_names }}</div>
+                {% endif %}
+                {% if stats %}
+                  <div class="stats">
+                    {% if stats.unique_handles %}
+                      <span>👥 {{ stats.unique_handles }} unique handles</span>
+                    {% endif %}
+                    {% if stats.top_hashtags %}
+                      <span>🏷️ {{ stats.top_hashtags|length }} hashtags</span>
+                    {% endif %}
+                  </div>
+                  {% if stats.top_hashtags %}
+                    <div style="margin-top: 6px;">
+                      {% for tag, count in stats.top_hashtags[:5] %}
+                        <span class="chip">{{ tag }} ({{ count }})</span>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endif %}
               </div>
-              {% if stats.unique_handles %}
-                <div style="opacity:.8; font-size: 13px;">Unique handles: {{ stats.unique_handles }}</div>
-              {% endif %}
-              {% if stats.top_hashtags %}
-                <div style="opacity:.8; font-size: 13px; margin-top:4px;">Top hashtags:
-                  {% for tag,count in stats.top_hashtags %}
-                    <span class="chip">{{ tag }} ({{ count }})</span>
-                  {% endfor %}
-                </div>
-              {% endif %}
             {% endif %}
-          {% endif %}
-        </form>
-      </div>
-
-      <div class="card">
-        <form action="/ui/query" method="post">
-          <label class="label-row"><b>Ask a question</b>
-            <span class="help" tabindex="0" aria-label="Help: Ask a question">
-              <span class="help__icon">?</span>
-              <span class="help__modal" role="tooltip">Type a natural‑language question. The system retrieves the most relevant influencer snippets and generates a grounded answer.</span>
-            </span>
-          </label>
-          <div class="row">
-            <input type="text" name="q" placeholder="Who talks about AI startups?" style="flex:1; min-width:260px" value="{{ q or '' }}" />
-            <button type="submit" class="btn-primary">Query</button>
           </div>
+
+          <!-- Query Section -->
+          <div style="margin-bottom: 24px;">
+            <label class="label-row"><b>Ask a question</b>
+              <span class="help" tabindex="0" aria-label="Help: Ask a question">
+                <span class="help__icon">?</span>
+                <span class="help__modal" role="tooltip">Type a natural‑language question. The system retrieves the most relevant influencer snippets and generates a grounded answer.</span>
+              </span>
+            </label>
+            <div class="row">
+              <input type="text" name="q" placeholder="Who talks about AI startups?" style="flex:1; min-width:260px" value="{{ q or '' }}" />
+              <button type="submit" name="action" value="query" class="btn-primary">Query</button>
+            </div>
+          </div>
+
+          <!-- Model Configuration -->
           <div class="form-grid">
             <div class="select-wrap">
               <label class="label-row" style="font-size:12px; opacity:.8;">Model
@@ -188,13 +275,12 @@
                   <span class="help__modal" role="tooltip">Choose the LLM to generate answers. Supports OpenAI and OpenAI‑compatible providers via custom base URL.</span>
                 </span>
               </label>
-              <select name="model">
-                <option value="gpt-4o-mini" {% if model == 'gpt-4o-mini' %}selected{% endif %}>gpt-4o-mini</option>
-                <option value="gpt-4o" {% if model == 'gpt-4o' %}selected{% endif %}>gpt-4o</option>
-                <option value="gpt-4o-mini-2024-07-18" {% if model == 'gpt-4o-mini-2024-07-18' %}selected{% endif %}>gpt-4o-mini-2024-07-18</option>
-                <option value="llama3-8b-8192" {% if model == 'llama3-8b-8192' %}selected{% endif %}>llama3-8b-8192 (Groq)</option>
-                <option value="mixtral-8x7b-32768" {% if model == 'mixtral-8x7b-32768' %}selected{% endif %}>mixtral-8x7b-32768 (Groq)</option>
-                <option value="qwen2.5-7b-instruct" {% if model == 'qwen2.5-7b-instruct' %}selected{% endif %}>qwen2.5-7b-instruct (Together)</option>
+              <select name="model" id="model" class="form-control">
+                  <option value="llama-3.1-8b-instant" {% if model == 'llama-3.1-8b-instant' %}selected{% endif %}>llama-3.1-8b-instant (Groq)</option>
+                  <option value="llama-3.1-70b-versatile" {% if model == 'llama-3.1-70b-versatile' %}selected{% endif %}>llama-3.1-70b-versatile (Groq)</option>
+                  <option value="llama-3.2-11b-text-preview" {% if model == 'llama-3.2-11b-text-preview' %}selected{% endif %}>llama-3.2-11b-text-preview (Groq)</option>
+                  <option value="gpt-4o-mini" {% if model == 'gpt-4o-mini' %}selected{% endif %}>gpt-4o-mini (OpenAI)</option>
+                  <option value="gpt-4o" {% if model == 'gpt-4o' %}selected{% endif %}>gpt-4o (OpenAI)</option>
               </select>
             </div>
             <div>
@@ -204,7 +290,7 @@
                   <span class="help__modal" role="tooltip">Optional request‑scoped API key. Leave blank to use environment configuration or local embeddings fallback.</span>
                 </span>
               </label>
-              <input type="password" name="api_key" placeholder="sk-..." />
+              <input type="password" name="api_key" placeholder="sk-..." value="{{ api_key or '' }}" />
             </div>
             <div class="full">
               <label class="label-row" style="font-size:12px; opacity:.8;">Base URL (OpenAI compatible)
@@ -220,17 +306,73 @@
       </div>
 
       {% if answer %}
-      <div class="card">
-        <h3>Answer</h3>
-        <div>{{ answer }}</div>
-      </div>
-      <div style="margin-top:10px">
-        <b>Citations</b><br/>
-        {% for c in citations %}
-          <span class="chip">{{ c.name }} {{ c.handle }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
+            <div class="hr"></div>
+            <div style="margin-bottom: 16px;">
+              <h3 style="margin: 0 0 8px 0; color: #111826;">Answer</h3>
+              <div style="background: rgba(255,255,255,0.9); padding: 12px; border-radius: 8px; color: #111826; line-height: 1.6;">{{ answer }}</div>
+            </div>
+            
+            {% if hallucination_analysis %}
+            <div style="margin-bottom: 16px;">
+              <h3 style="margin: 0 0 8px 0; color: #111826;">
+                🧠 Hallucination Analysis
+                {% if hallucination_analysis.is_hallucination %}
+                  <span style="color: #dc2626; font-size: 14px;">⚠️ Potential Hallucination</span>
+                {% else %}
+                  <span style="color: #059669; font-size: 14px;">✅ Likely Grounded</span>
+                {% endif %}
+              </h3>
+              <div style="background: rgba(255,255,255,0.9); padding: 12px; border-radius: 8px; color: #111826;">
+                <div style="margin-bottom: 8px;">
+                  <strong>Confidence:</strong> 
+                  <span style="text-transform: capitalize;">{{ hallucination_analysis.confidence }}</span>
+                  (Score: {{ hallucination_analysis.score }})
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <strong>Analysis:</strong> {{ hallucination_analysis.reason }}
+                </div>
+                {% if hallucination_analysis.metrics %}
+                <div style="margin-bottom: 8px;">
+                  <strong>Metrics:</strong>
+                  <div style="font-size: 12px; margin-top: 4px;">
+                    Citation Coverage: {{ hallucination_analysis.metrics.citation_coverage }} | 
+                    Query Relevance: {{ hallucination_analysis.metrics.query_relevance }} | 
+                    Citation Quality: {{ hallucination_analysis.metrics.citation_quality }}
+                  </div>
+                </div>
+                {% endif %}
+                {% if hallucination_analysis.suggestions %}
+                <div>
+                  <strong>Suggestions:</strong>
+                  <ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 13px;">
+                    {% for suggestion in hallucination_analysis.suggestions %}
+                      <li>{{ suggestion }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+            
+            {% if citations %}
+            <div class="citations">
+                <h4>📚 Citations:</h4>
+                {% for citation in citations %}
+                <div class="citation">
+                    <div class="citation-header">
+                        <strong>{{ citation.name }} @{{ citation.handle }}</strong>
+                        <span class="niche">{{ citation.niche }}</span>
+                        <span class="score">Score: {{ "%.3f"|format(citation.score) }}</span>
+                    </div>
+                    <div class="citation-content">
+                        {{ citation.sample_post[:200] }}{% if citation.sample_post|length > 200 %}...{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+          {% endif %}
     </div>
     <footer class="site-footer">
       <div class="credit">Built with FastAPI · Jinja2 · RAG · Vector Search</div>
