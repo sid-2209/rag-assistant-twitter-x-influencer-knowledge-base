@@ -8,6 +8,7 @@ import os
 import uuid
 from typing import Dict, Any, List
 from collections import Counter
+from datetime import datetime
 
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
@@ -17,6 +18,41 @@ router = APIRouter()
 # In-memory cache of the last ingest for UI display/download
 LAST_INGEST: Dict[str, Any] = {}
 FIRST_N: int = 20
+
+# In-memory history storage for all interactions
+INTERACTION_HISTORY: List[Dict[str, Any]] = []
+
+
+def log_interaction(
+    action: str,
+    dataset: str = None,
+    query: str = None,
+    model: str = None,
+    api_key: str = None,
+    base_url: str = None,
+    answer: str = None,
+    citations: List[Dict[str, Any]] = None,
+    hallucination_analysis: Dict[str, Any] = None,
+    ingested: int = None
+):
+    """Log an interaction to the history."""
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "action": action,
+        "dataset": dataset,
+        "query": query,
+        "model": model,
+        "api_key": "••••••••" if api_key else None,
+        "base_url": base_url,
+        "answer": answer,
+        "citations": citations,
+        "hallucination_analysis": hallucination_analysis,
+        "ingested": ingested
+    }
+    INTERACTION_HISTORY.append(entry)
+    # Keep only last 100 entries to prevent memory issues
+    if len(INTERACTION_HISTORY) > 100:
+        INTERACTION_HISTORY.pop(0)
 
 
 @router.get("/ui")
@@ -40,6 +76,18 @@ async def ui_home(request: Request):
 @router.get("/ui/names.txt")
 async def download_names() -> str:
     return (LAST_INGEST.get("names_text") or "").strip()
+
+
+@router.get("/ui/history")
+async def ui_history(request: Request):
+    """Display interaction history page."""
+    return templates.TemplateResponse(
+        "history.html",
+        {
+            "request": request,
+            "history": INTERACTION_HISTORY
+        },
+    )
 
 
 @router.post("/ui/query")
@@ -113,6 +161,7 @@ async def ui_query(request: Request):
                 # Update last ingest cache
                 LAST_INGEST = {
                     "count": count,
+                    "dataset_name": file.filename,
                     "names": names,
                     "names_text": "\n".join(names),
                     "stats": {
@@ -122,6 +171,13 @@ async def ui_query(request: Request):
                 }
                 
                 print(f"Upload successful: {count} records ingested")
+                
+                # Log the upload interaction
+                log_interaction(
+                    action="upload",
+                    dataset=file.filename,
+                    ingested=count
+                )
                 
             except Exception as e:
                 print(f"Upload error: {e}")
@@ -175,6 +231,20 @@ async def ui_query(request: Request):
             hallucination_analysis = response.hallucination_analysis
             
             print("Rendering template with results...")
+            
+            # Log the query interaction
+            log_interaction(
+                action="query",
+                dataset=LAST_INGEST.get("dataset_name", "Unknown") if LAST_INGEST else None,
+                query=query,
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                answer=response.answer,
+                citations=response.citations,
+                hallucination_analysis=hallucination_analysis
+            )
+            
             return templates.TemplateResponse("index.html", {
                 "request": request,
                 "ingested": LAST_INGEST.get("count", 0) if LAST_INGEST else 0,

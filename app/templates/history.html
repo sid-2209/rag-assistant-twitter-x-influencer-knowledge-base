@@ -1,0 +1,526 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>History - RAG Assistant for Twitter/X</title>
+    <style>
+      *, *::before, *::after{ box-sizing: border-box }
+      body{
+        font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        margin: 24px; 
+        background: linear-gradient(90deg, #b993d6 0%, #8ca6db 100%);
+        color:#E5E7EB; line-height: 1.5;
+        position: relative;
+        overflow-x: visible;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.1);
+        z-index: -1;
+      }
+      .container{max-width: 1200px; margin: 0 auto; overflow: visible;}
+      h1{margin: 0 0 10px 0; color:#ffffff; text-shadow: 0 2px 16px rgba(0,0,0,.40), 0 0 18px rgba(255,255,255,.22)}
+      .subtitle{opacity:.95; margin: 0 0 22px 2px; max-width: 820px; color: rgba(17,24,39,.92); text-shadow: 0 1px 12px rgba(255,255,255,.15)}
+      .card{
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 16px; padding: 18px 20px; margin-bottom: 26px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        color: #111826;
+        position: relative; z-index: 0; overflow: visible;
+      }
+      /* Top navbar */
+      .topbar{ position: sticky; top: 0; z-index: 2; margin: 0 auto 18px; max-width: 1200px;
+        background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.30);
+        border-radius: 14px; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+      }
+      .nav-inner{ display:flex; align-items:center; justify-content: space-between; padding: 8px 12px }
+      .brand{ font-weight: 700; letter-spacing:.3px; color:#111826; opacity:.95 }
+      .brand-logo{ height:28px; width:auto; display:block; object-fit:contain }
+      @media (min-width: 880px){ .brand-logo{ height:32px } }
+      .links a{ color:#111826; opacity:.9; text-decoration:none; font-size:14px; margin-left:10px; padding:6px 10px; border-radius:8px; transition: background .12s ease }
+      .links a:hover{ background: rgba(124,58,237,0.25) }
+      /* Footer */
+      .site-footer{ margin: 28px auto 8px; text-align:center }
+      .site-footer .credit{
+        display:inline-block; padding:8px 12px; border-radius:12px;
+        background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22);
+        -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%);
+        color:#111826; opacity:.75; transition: opacity .15s ease
+      }
+      .site-footer .credit:hover{ opacity:.9 }
+      
+      /* History Table Styles */
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: rgba(255,255,255,0.95);
+        border-radius: 12px;
+        overflow: visible;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        table-layout: fixed;
+      }
+      .history-table th {
+        background: rgba(255,255,255,0.1);
+        color: #2d3748;
+        padding: 12px 8px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        border-bottom: 2px solid rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+      }
+      .history-table td {
+        padding: 12px 8px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        color: #2d3748;
+        font-size: 12px;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        position: relative;
+        overflow: visible;
+      }
+      .history-table tr:hover {
+        background: rgba(140, 166, 219, 0.1);
+      }
+      .history-table tr:last-child td {
+        border-bottom: none;
+      }
+      
+      /* Column specific styles - adjusted for better fit */
+      .col-timestamp { width: 120px; }
+      .col-action { width: 80px; }
+      .col-dataset { width: 120px; }
+      .col-query { width: 140px; }
+      .col-model { width: 100px; }
+      .col-api-key { width: 80px; }
+      .col-base-url { width: 120px; }
+      .col-answer { width: 180px; }
+      .col-citations { width: 80px; }
+      .col-hallucination { width: 100px; }
+      
+      /* Content truncation - adjusted for smaller columns */
+      .truncate {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+        position: relative;
+      }
+      .truncate-long {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+        position: relative;
+      }
+      
+      /* Hover modal styles - matching homepage help modals */
+      .hover-modal {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 300px;
+        max-width: 92vw;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 3px solid #dc2626;
+        border: 1px solid rgba(0,0,0,0.12);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        color: #0b1220;
+        box-shadow: 0 14px 34px rgba(0,0,0,.48);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity .12s ease, visibility .12s ease;
+        z-index: 99999;
+        font-size: 14px;
+        line-height: 1.55;
+        letter-spacing: .1px;
+        overflow-wrap: anywhere;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+      
+      .history-table td:hover .hover-modal {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+      
+      /* Ensure modals don't go off-screen */
+      .hover-modal {
+        max-width: calc(100vw - 40px);
+      }
+      
+
+      
+      /* Status badges */
+      .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .badge-upload {
+        background: rgba(5, 150, 105, 0.2);
+        color: #059669;
+        border: 1px solid rgba(5, 150, 105, 0.3);
+      }
+      .badge-query {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+      }
+      
+      /* API key masking */
+      .api-key-masked {
+        font-family: monospace;
+        letter-spacing: 2px;
+      }
+      
+      /* Hallucination score */
+      .hallucination-score {
+        font-weight: 600;
+      }
+      .score-low { color: #059669; }
+      .score-medium { color: #d97706; }
+      .score-high { color: #dc2626; }
+      
+      /* Empty state */
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: rgba(17,24,39,.7);
+      }
+      .empty-state h3 {
+        margin: 0 0 12px 0;
+        color: rgba(17,24,39,.9);
+      }
+      .empty-state p {
+        margin: 0;
+        font-size: 14px;
+      }
+      
+      /* Responsive */
+      @media (max-width: 768px) {
+        .container {
+          max-width: 100%;
+          margin: 0 12px;
+        }
+        .history-table {
+          font-size: 11px;
+          table-layout: auto;
+        }
+        .history-table th,
+        .history-table td {
+          padding: 6px 4px;
+        }
+        .col-timestamp { width: 90px; }
+        .col-action { width: 60px; }
+        .col-dataset { width: 100px; }
+        .col-query { width: 120px; }
+        .col-model { width: 80px; }
+        .col-api-key { width: 60px; }
+        .col-base-url { width: 100px; }
+        .col-answer { width: 140px; }
+        .col-citations { width: 70px; }
+        .col-hallucination { width: 80px; }
+        .truncate {
+          max-width: 100px;
+        }
+        .truncate-long {
+          max-width: 140px;
+        }
+      }
+      
+      /* Extra small screens */
+      @media (max-width: 480px) {
+        .history-table {
+          font-size: 10px;
+        }
+        .history-table th,
+        .history-table td {
+          padding: 4px 2px;
+        }
+        .col-timestamp { width: 80px; }
+        .col-action { width: 50px; }
+        .col-dataset { width: 80px; }
+        .col-query { width: 100px; }
+        .col-model { width: 70px; }
+        .col-api-key { width: 50px; }
+        .col-base-url { width: 80px; }
+        .col-answer { width: 120px; }
+        .col-citations { width: 60px; }
+        .col-hallucination { width: 70px; }
+        .truncate {
+          max-width: 80px;
+        }
+        .truncate-long {
+          max-width: 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="topbar">
+      <div class="nav-inner">
+        <img class="brand-logo" src="/static/icon/RAG%20icon.png" alt="RAG Assistant" />
+        <div class="links">
+          <a href="/ui">Home</a>
+          <a href="/ui/history">History</a>
+          <a href="/docs" target="_blank" rel="noopener">API Docs</a>
+          <a href="/ui/how-it-works">How this works?</a>
+          <a href="/ui/updates">Updates</a>
+          <a href="/ui/about">About</a>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="container">
+      <h1>Interaction History</h1>
+      <p class="subtitle">
+        Complete log of all dataset uploads, queries, and responses with detailed metrics and analysis.
+      </p>
+
+      <div class="card">
+        {% if history %}
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th class="col-timestamp">Timestamp</th>
+                <th class="col-action">Action</th>
+                <th class="col-dataset">Dataset</th>
+                <th class="col-query">Query</th>
+                <th class="col-model">Model</th>
+                <th class="col-api-key">API Key</th>
+                <th class="col-base-url">Base URL</th>
+                <th class="col-answer">Answer</th>
+                <th class="col-citations">Citations</th>
+                <th class="col-hallucination">Hallucination</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in history %}
+                <tr>
+                  <td class="col-timestamp">{{ entry.timestamp }}</td>
+                  <td class="col-action">
+                    <span class="badge badge-{{ entry.action }}">
+                      {{ entry.action }}
+                    </span>
+                  </td>
+                  <td class="col-dataset">
+                    {% if entry.dataset %}
+                      <div class="truncate">
+                        {{ entry.dataset }}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Dataset:</strong> {{ entry.dataset }}
+                        {% if entry.ingested %}
+                          <br><strong>Records:</strong> {{ entry.ingested }}
+                        {% endif %}
+                      </div>
+                      {% if entry.ingested %}
+                        <small style="color: #059669;">{{ entry.ingested }} records</small>
+                      {% endif %}
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-query">
+                    {% if entry.query %}
+                      <div class="truncate">
+                        {{ entry.query }}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Query:</strong> {{ entry.query }}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-model">
+                    {% if entry.model %}
+                      <div class="truncate">
+                        {{ entry.model }}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Model:</strong> {{ entry.model }}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-api-key">
+                    {% if entry.api_key %}
+                      <span class="api-key-masked">••••••••</span>
+                    {% else %}
+                      <span style="color: #9ca3af;">None</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-base-url">
+                    {% if entry.base_url %}
+                      <div class="truncate">
+                        {{ entry.base_url }}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Base URL:</strong> {{ entry.base_url }}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">Default</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-answer">
+                    {% if entry.answer %}
+                      <div class="truncate-long">
+                        {{ entry.answer }}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Answer:</strong><br>
+                        {{ entry.answer }}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-citations">
+                    {% if entry.citations %}
+                      <div class="truncate" style="cursor: help;">
+                        <span style="color: #3b82f6;">{{ entry.citations|length }}</span>
+                        <small style="color: #6b7280;">citations</small>
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Citations ({{ entry.citations|length }}):</strong><br>
+                        {% for citation in entry.citations[:3] %}
+                          • {{ citation.name }} @{{ citation.handle }}<br>
+                        {% endfor %}
+                        {% if entry.citations|length > 3 %}
+                          ... and {{ entry.citations|length - 3 }} more
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-hallucination">
+                    {% if entry.hallucination_analysis %}
+                      {% set score = entry.hallucination_analysis.score %}
+                      <div class="truncate" style="cursor: help;">
+                        {% if score <= 0.3 %}
+                          <span class="hallucination-score score-low">{{ "%.1f"|format(score) }}</span>
+                          <small style="color: #059669;">Low</small>
+                        {% elif score <= 0.7 %}
+                          <span class="hallucination-score score-medium">{{ "%.1f"|format(score) }}</span>
+                          <small style="color: #d97706;">Medium</small>
+                        {% else %}
+                          <span class="hallucination-score score-high">{{ "%.1f"|format(score) }}</span>
+                          <small style="color: #dc2626;">High</small>
+                        {% endif %}
+                      </div>
+                      <div class="hover-modal">
+                        <strong>TEST MODAL - Hallucination Analysis:</strong><br>
+                        <strong>Score:</strong> {{ "%.2f"|format(score) }}<br>
+                        <strong>Confidence:</strong> {{ entry.hallucination_analysis.confidence }}<br>
+                        {% if entry.hallucination_analysis.metrics %}
+                          <strong>Metrics:</strong><br>
+                          • Coverage: {{ "%.2f"|format(entry.hallucination_analysis.metrics.citation_coverage) }}<br>
+                          • Relevance: {{ "%.2f"|format(entry.hallucination_analysis.metrics.query_relevance) }}<br>
+                          • Quality: {{ "%.2f"|format(entry.hallucination_analysis.metrics.citation_quality) }}
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <span style="color: #9ca3af;">-</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-state">
+            <h3>No History Yet</h3>
+            <p>Start by uploading a dataset and making queries to see your interaction history here.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="credit">Built with FastAPI & RAG</div>
+    </footer>
+    
+    <script>
+      // Smart modal positioning
+      document.addEventListener('DOMContentLoaded', function() {
+        const tableCells = document.querySelectorAll('.history-table td');
+        
+        tableCells.forEach(cell => {
+          const modal = cell.querySelector('.hover-modal');
+          if (!modal) return;
+          
+          cell.addEventListener('mouseenter', function() {
+            // Get cell position
+            const cellRect = cell.getBoundingClientRect();
+            const modalRect = modal.getBoundingClientRect();
+            
+            // Check if there's enough space above
+            const spaceAbove = cellRect.top;
+            const spaceBelow = window.innerHeight - cellRect.bottom;
+            
+            // Position modal above or below based on available space
+            if (spaceAbove >= modalRect.height + 20) {
+              // Position above
+              modal.style.bottom = 'calc(100% + 8px)';
+              modal.style.top = 'auto';
+            } else if (spaceBelow >= modalRect.height + 20) {
+              // Position below
+              modal.style.top = 'calc(100% + 8px)';
+              modal.style.bottom = 'auto';
+            } else {
+              // Center vertically if no space above or below
+              modal.style.top = '50%';
+              modal.style.bottom = 'auto';
+              modal.style.transform = 'translateX(-50%) translateY(-50%)';
+            }
+            
+            // Check horizontal positioning
+            const spaceLeft = cellRect.left;
+            const spaceRight = window.innerWidth - cellRect.right;
+            
+            if (spaceLeft < 150 && spaceRight >= 150) {
+              // Align to right edge of cell
+              modal.style.left = 'auto';
+              modal.style.right = '0';
+              modal.style.transform = 'translateX(0)';
+            } else if (spaceRight < 150 && spaceLeft >= 150) {
+              // Align to left edge of cell
+              modal.style.left = '0';
+              modal.style.transform = 'translateX(0)';
+            } else {
+              // Center horizontally
+              modal.style.left = '50%';
+              modal.style.transform = 'translateX(-50%)';
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
